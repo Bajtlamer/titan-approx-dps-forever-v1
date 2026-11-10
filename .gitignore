@@ -1,0 +1,6 @@
+dist/
+.work/
+tmp-*
+__pycache__/
+*.pyc
+*SavedVariables*

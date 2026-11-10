@@ -1,0 +1,12 @@
+---
+description: Authorized local installation and GitHub publication for each Titan Approx DPS release
+alwaysApply: true
+---
+
+Follow AGENTS.md. For every release, run checks, build the runtime-only ZIP,
+install through tools/install.py into
+/Applications/World of Warcraft/_forever_/Interface/AddOns with backup and
+byte verification, then publish the matching version tag, ZIP and SHA256SUMS
+to Bajtlamer/titan-approx-dps-forever-v1 with git and gh.
+The user already authorized these actions. Respect actual filesystem/network
+permissions and report blocked steps. Do not force-push or overwrite releases.

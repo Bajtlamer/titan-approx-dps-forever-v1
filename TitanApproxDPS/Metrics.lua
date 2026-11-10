@@ -1,0 +1,3 @@
+local _,ns=...
+ns.Metrics={}
+function ns.Metrics.Derive(p)return {damage=p.damage,dps=p.seconds and p.seconds>0 and p.damage/p.seconds or nil,crits=ns.Missing('Crit evidence unavailable'),misses=ns.Missing('Attack outcome evidence unavailable')}end
