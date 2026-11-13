@@ -1,5 +1,5 @@
 local ns={}
-for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','SpellRules','WeaponAttribution','Records','Reports','Json','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
+for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','SpellRules','WeaponAttribution','Records','Categories','Stats','Reports','Json','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
 local PROFILE='16:empty;17:empty;18:20:0'
 local KEY='slot:18:20:0'
 local function newStore()

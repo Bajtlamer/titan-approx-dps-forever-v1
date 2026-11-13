@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: Titan Approx DPS
 ## Notes: Post-fight weapon, spell and method observations for Forever.
-## Version: 0.1.9-alpha
+## Version: 0.1.10-alpha
 ## OptionalDeps: Titan
 ## SavedVariables: TitanApproxDPSDB
 Namespace.lua
@@ -17,6 +17,8 @@ Comparisons.lua
 SpellRules.lua
 WeaponAttribution.lua
 Records.lua
+Categories.lua
+Stats.lua
 Reports.lua
 Json.lua
 Transfer.lua

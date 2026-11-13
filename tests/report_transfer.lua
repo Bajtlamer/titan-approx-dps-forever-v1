@@ -1,4 +1,4 @@
-local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','SpellRules','WeaponAttribution','Reports','Records','Json','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
+local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','SpellRules','WeaponAttribution','Reports','Records','Categories','Stats','Json','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
 local source=ns.Storage.Open({},'p');local c=source:Character();c.baseDamage=100;c.baseSeconds=10;c.reportGeneration=1
 c.baseRows.base={profile='16:10:0;17:empty;18:empty',mode='pve',damage=100,seconds=10,timedDamage=100,sessions=1,spells={[6603]={damage=100,timedDamage=100,origins={player={damage=100,timedDamage=100}}}}};c.reportBaseRows=ns.Copy(c.baseRows);source:Rebuild()
 local dest=ns.Storage.Open({},'q');dest:Character().class='WARRIOR';dest:Rebuild()

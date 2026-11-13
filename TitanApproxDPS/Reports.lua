@@ -8,6 +8,7 @@ function R.Build(store,mode,api,includeHidden)
  api=api or _G
  local c=store:Character();local out={groups={},characterDamage=c and c.totalDamage or 0,mode=mode,preservedDamage=c and c.preservedLifetimeDamage or 0}
  if not c then return out end
+ local collected=ns.Stats and ns.Stats.Collect(c)
  local groups={};local parsed={}
  local lifetime={}
  for _,r in pairs(c.rows or {})do for id,part in pairs(ns.WeaponAttribution.Split(r,c,api))do lifetime[id]=(lifetime[id] or 0)+part.damage end end
@@ -35,6 +36,8 @@ function R.Build(store,mode,api,includeHidden)
   if g.sessions>0 and (includeHidden or not(c.reportHidden and c.reportHidden[id]))then
    local sum=0
    for spell,damage in pairs(g.spellMap)do g.spells[#g.spells+1]={spellID=spell,damage=damage,percent=g.damage>0 and 100*damage/g.damage or nil};sum=sum+damage end
+   if ns.Categories then g.kind=ns.Categories.Of(g)end
+   if collected then g.stats={period=ns.Stats.ForGroup(collected,id,mode,'period'),lifetime=ns.Stats.ForGroup(collected,id,mode,'lifetime')}end
    g.records=c.records and c.records.weapons and c.records.weapons[id] or nil
    g.unattributed=math.max(0,g.damage-sum);g.dps=g.seconds>0 and g.timedDamage/g.seconds or nil
    table.sort(g.spells,function(a,b)if a.damage==b.damage then return a.spellID<b.spellID end;return a.damage>b.damage end)

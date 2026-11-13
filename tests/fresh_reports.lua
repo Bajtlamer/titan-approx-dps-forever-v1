@@ -1,4 +1,4 @@
-local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','SpellRules','WeaponAttribution','Reports'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
+local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','SpellRules','WeaponAttribution','Records','Categories','Stats','Reports'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
 local api={C_Item={GetItemInfo=function(id)return 'Heavy Shortbow','|cff1eff00|Hitem:3036|h[Heavy Shortbow]|h|r',2 end}}
 local db=ns.Storage.Open({},'p');local function hit(id,profile,amount)db:UpsertContribution({receiptID=id,profile=profile,mode='unknown',damage=amount,seconds=10,spells={{spellID=75,damage={value=amount}}}})end
 hit('1','16:empty;17:empty;18:3036:0:0:0:0:0:0:111:12:0',40)

@@ -46,6 +46,19 @@ function T.Render(tip)
   local g=part.group;separator(tip)
   tip:AddLine(g.name..(part.continued and ' (continued)' or ''),1,1,1,true)
   if g.lifetimeDamage~=g.damage then tip:AddDoubleLine(g.slot and 'Weapon lifetime (all report periods)' or 'All-time damage in this category',metric(number(g.lifetimeDamage), colors.lifetime),.8,.8,.8,1,1,1)end
+  if g.stats then
+   local st=g.stats.period
+   if st.n>0 then
+    local spread=st.spread and ('+/-'..string.format('%.0f%%',st.spread*100)) or 'Unavailable'
+    tip:AddDoubleLine('Typical DPS ('..st.n..(st.n==1 and ' fight, ' or ' fights, ')..st.confidence..')', pair(string.format('%.1f',st.typical), colors.dps, spread, colors.percent), 1,.82,.12,1,1,1)
+    if st.recentMedian then tip:AddDoubleLine('Recent DPS (last '..st.recentCount..')', metric(string.format('%.1f',st.recentMedian), colors.dps), 1,.82,.12,1,1,1)end
+    local life=g.stats.lifetime
+    if life.n~=st.n and life.typical then tip:AddDoubleLine('Typical DPS, all periods ('..life.n..' fights)', metric(string.format('%.1f',life.typical), colors.dps), .8,.8,.8,1,1,1)end
+   else
+    tip:AddDoubleLine('Typical DPS', metric('Unavailable', colors.dps), 1,.82,.12,1,1,1)
+    tip:AddLine('Needs fights of at least 10 seconds.',.65,.65,.65)
+   end
+  end
   tip:AddDoubleLine('Report damage / DPS', pair(number(g.damage), colors.damage, g.dps and string.format('%.1f',g.dps) or 'Unavailable', colors.dps), 1,.82,.12,1,1,1)
   if g.records and (g.records.fightDamage or g.records.fightDPS) then
    local best=g.records.fightDamage and number(g.records.fightDamage.value) or 'Unavailable'
