@@ -35,6 +35,7 @@ function R.Build(store,mode,api,includeHidden)
   if g.sessions>0 and (includeHidden or not(c.reportHidden and c.reportHidden[id]))then
    local sum=0
    for spell,damage in pairs(g.spellMap)do g.spells[#g.spells+1]={spellID=spell,damage=damage,percent=g.damage>0 and 100*damage/g.damage or nil};sum=sum+damage end
+   g.records=c.records and c.records.weapons and c.records.weapons[id] or nil
    g.unattributed=math.max(0,g.damage-sum);g.dps=g.seconds>0 and g.timedDamage/g.seconds or nil
    table.sort(g.spells,function(a,b)if a.damage==b.damage then return a.spellID<b.spellID end;return a.damage>b.damage end)
    out.groups[#out.groups+1]=g

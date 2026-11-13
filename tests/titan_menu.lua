@@ -1,11 +1,12 @@
-local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','SpellRules','WeaponAttribution','Reports','Titan'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
+local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','SpellRules','WeaponAttribution','Records','Reports','Titan'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
 ns.store=ns.Storage.Open({},'p');ns.store:UpsertContribution({receiptID='1',profile='16:empty;17:empty;18:20:0',mode='pve',damage=100,seconds=10,spells={{spellID=1,origin='player',damage={value=60}},{spellID=2,origin='player',damage={value=40}}}})
 ns.store:Character().profiles['16:empty;17:empty;18:20:0']='|cff1eff00|Hitem:20:0|h[Green Bow]|h|r';ns.store.saved.settings.mode='all'
 C_Spell={IsRangedAutoAttackSpell=function()return true end}
+do local c=ns.store:Character();c.records=nil;c.recordsBackfilled=nil;ns.store:BackfillRecords()end
 local lines={};local tip={rules={},ruleCount=0}
 function tip:AddLine(s)lines[#lines+1]=s end
 function tip:AddDoubleLine(a,b)lines[#lines+1]=a..' '..b end
-ns.Titan.Render(tip);local rawText=table.concat(lines,'\n');local text=rawText:gsub('|c%x%x%x%x%x%x%x%x',''):gsub('|r','');assert(text:find('Green Bow',1,true));assert(text:find('60 / 60.0%',1,true));assert(text:find('40 / 40.0%',1,true));assert(text:find('Character lifetime 100',1,true));assert(not text:find('Weapon lifetime (all report periods) 100',1,true),'equal summaries repeated')
+ns.Titan.Render(tip);local rawText=table.concat(lines,'\n');local text=rawText:gsub('|c%x%x%x%x%x%x%x%x',''):gsub('|r','');assert(text:find('Green Bow',1,true));assert(text:find('60 / 60.0%',1,true));assert(text:find('40 / 40.0%',1,true));assert(text:find('Character lifetime 100',1,true));assert(text:find('Best fight / Best DPS (protected) 100 / 10.0',1,true),'protected record line missing');assert(not text:find('Weapon lifetime (all report periods) 100',1,true),'equal summaries repeated')
 local actions={};local node={}
 function node:CreateTitle()return self end
 function node:CreateButton(label,cb)if cb then actions[label]=cb end;return self end

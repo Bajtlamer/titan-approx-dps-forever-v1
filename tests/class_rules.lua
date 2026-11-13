@@ -1,4 +1,4 @@
-local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','SpellRules','WeaponAttribution','Reports','Json','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
+local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','SpellRules','WeaponAttribution','Reports','Records','Json','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
 local profile='16:10:0;17:11:0;18:20:0'
 local api={C_Item={GetItemInfoInstant=function(id)return id,'','','INVTYPE_WEAPON',nil,2 end}}
 local function report(class,id,origin,gear,customAPI)

@@ -9,6 +9,7 @@ local colors = {
  lifetime = 'FFD76A',
  slash = 'C878FF',
  unavailable = 'A0A0A0',
+ record = 'FF9F43',
 }
 local function colored(value, color)
  return '|cff' .. color .. value .. '|r'
@@ -46,6 +47,11 @@ function T.Render(tip)
   tip:AddLine(g.name..(part.continued and ' (continued)' or ''),1,1,1,true)
   if g.lifetimeDamage~=g.damage then tip:AddDoubleLine(g.slot and 'Weapon lifetime (all report periods)' or 'All-time damage in this category',metric(number(g.lifetimeDamage), colors.lifetime),.8,.8,.8,1,1,1)end
   tip:AddDoubleLine('Report damage / DPS', pair(number(g.damage), colors.damage, g.dps and string.format('%.1f',g.dps) or 'Unavailable', colors.dps), 1,.82,.12,1,1,1)
+  if g.records and (g.records.fightDamage or g.records.fightDPS) then
+   local best=g.records.fightDamage and number(g.records.fightDamage.value) or 'Unavailable'
+   local bestDps=g.records.fightDPS and string.format('%.1f',g.records.fightDPS.value) or 'Unavailable'
+   tip:AddDoubleLine('Best fight / Best DPS (protected)', pair(best, colors.record, bestDps, colors.record), 1,.82,.12,1,1,1)
+  end
   tip:AddDoubleLine('Auto-attacks / abilities', pair(number(g.autoDamage), colors.damage, number(g.abilityDamage), colors.ability), 1,.82,.12,1,1,1)
   for _,spell in ipairs(part.spells) do
    local share = spell.percent and string.format('%.1f%%', spell.percent) or 'Unavailable'

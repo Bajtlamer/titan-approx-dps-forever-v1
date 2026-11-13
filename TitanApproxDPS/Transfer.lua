@@ -9,6 +9,7 @@ local function validate(c)
  if c.reportGeneration~=nil then assert(ns.Number(c.reportGeneration) and c.reportGeneration%1==0,'Invalid report period')end
  if c.reportStartedAt~=nil then assert(ns.Number(c.reportStartedAt),'Invalid report start')end
 assert(c.class==nil or (type(c.class)=='string' and c.class:match('^[A-Z]+$')),'Invalid class');assert(c.preservedLifetimeDamage==nil or ns.Number(c.preservedLifetimeDamage),'Invalid protected lifetime');if c.reportHidden~=nil then assert(type(c.reportHidden)=='table','Invalid report settings');for k,v in pairs(c.reportHidden)do assert(type(k)=='string' and type(v)=='boolean','Invalid hidden profile')end end
+ assert(c.records==nil or ns.Records.Validate(c.records),'Invalid records')
  for _,field in ipairs({'baseDamage','baseSeconds','totalDamage','totalSeconds','sequence','epoch','revision'})do assert(ns.Number(c[field]),'Invalid '..field)end
  for _,field in ipairs({'receipts','order','history','baseRows','methods','profiles'})do assert(type(c[field])=='table','Missing '..field)end
  local modes={pve=true,pvp=true,mixed=true,unknown=true}
@@ -52,7 +53,8 @@ function T.Stage(text,store)
     if origins and origins.player then local old=origins.player;local unknown=origins.unknown or {damage=0,timedDamage=0};origins.unknown=unknown;unknown.damage=unknown.damage+old.damage;unknown.timedDamage=unknown.timedDamage+old.timedDamage;origins.player=nil end
    end end end
   end
-  -- JSON object spell keys are normalized on restore.
+  ns.Records.Normalize(copy.records)
+ -- JSON object spell keys are normalized on restore.
   for _,rows in ipairs({copy.baseRows,copy.reportBaseRows or {}})do for _,r in pairs(rows)do local s={};for id,v in pairs(r.spells)do s[tonumber(id)]=v end;r.spells=s end end
   local temporary=ns.Storage.Open({schema=1,characters={[store.id]=copy}},store.id);temporary:Rebuild()
   assert(copy.totalDamage==doc.data.totalDamage,'Inconsistent total')
@@ -70,7 +72,10 @@ function T.Apply(preview,store)
  local previous=ns.Copy(store:Character());store.saved.preImportBackup=previous
  local restored=ns.Copy(preview.data)
  restored.class=previous.class;restored.name=previous.name
+ -- Records are protected: an import can only raise them.
+ restored.records=ns.Records.Merge(previous.records,restored.records);restored.recordsBackfilled=nil
  restored.preservedLifetimeDamage=(restored.preservedLifetimeDamage or 0)+math.max(0,previous.totalDamage-restored.totalDamage)
  store.saved.characters[store.id]=restored;store:Rebuild()
+ store:BackfillRecords()
  store:Character().epoch=store:Character().epoch+1;store:Character().revision=store:Character().revision+1;return true
 end

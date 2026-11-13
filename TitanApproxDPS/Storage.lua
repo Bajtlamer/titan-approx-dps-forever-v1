@@ -9,6 +9,7 @@ function S.Open(saved,id)
    for _,c in pairs(saved.characters)do
     assert(type(c)=='table');assert(c.reportGeneration==nil or (ns.Number(c.reportGeneration) and c.reportGeneration%1==0));assert(c.reportBaseRows==nil or type(c.reportBaseRows)=='table');assert(c.preservedLifetimeDamage==nil or ns.Number(c.preservedLifetimeDamage));assert(c.reportHidden==nil or type(c.reportHidden)=='table')
     for _,k in ipairs({'receipts','order','history','baseRows','methods','profiles'})do assert(type(c[k])=='table')end
+    assert(c.records==nil or not ns.Records or ns.Records.Validate(c.records))
     for _,k in ipairs({'baseDamage','baseSeconds','totalDamage','sequence','epoch','revision'})do assert(ns.Number(c[k]))end
     for _,row in pairs(c.baseRows)do if type(row)=='table' and type(row.spells)=='table'then for _,s in pairs(row.spells)do assert(type(s)=='table' and ns.ValidOrigins(s.origins,s.damage,s.timedDamage))end end end
     for _,r in pairs(c.receipts)do assert(type(r)=='table' and ns.Number(r.damage) and type(r.spells)=='table' and type(r.profile)=='string' and ({pve=true,pvp=true,mixed=true,unknown=true})[r.mode]);for _,spell in ipairs(r.spells)do assert(type(spell)=='table' and type(spell.damage)=='table' and ns.Number(spell.damage.value))end end
@@ -52,6 +53,7 @@ function S:UpsertContribution(r)
  else c.order[#c.order+1]=r.receiptID end
  r=ns.Copy(r);r.reportGeneration=old and (old.reportGeneration or 0) or (c.reportGeneration or 0)
  c.receipts[r.receiptID]=ns.Copy(r);c.revision=c.revision+1
+ self:ObserveRecords(c.receipts[r.receiptID])
  if not old then c.history[#c.history+1]=r.receiptID end
  while #c.history>200 do table.remove(c.history,1)end
  while #c.order>2048 do local k=table.remove(c.order,1);local prior=c.receipts[k];c.baseDamage=c.baseDamage+prior.damage;c.baseSeconds=c.baseSeconds+(prior.seconds or 0);add(c.baseRows,prior);if c.reportGeneration and prior.reportGeneration==c.reportGeneration then c.reportBaseRows=c.reportBaseRows or {};add(c.reportBaseRows,prior)end;c.receipts[k]=nil end
@@ -62,4 +64,23 @@ function S:ResetReports(at)
  local c=self:Character();if not c then return false end
  c.reportGeneration=(c.reportGeneration or 0)+1;c.reportBaseRows={};c.reportStartedAt=at;c.revision=c.revision+1
  self:Rebuild();return true
+end
+
+-- Protected records are updated from every stored receipt. Failures here must never
+-- interrupt recording, so attribution problems are contained.
+function S:ObserveRecords(receipt)
+ local c=self:Character()
+ if not c or not ns.Records or not ns.WeaponAttribution or not ns.SpellRules then return end
+ local rows={};add(rows,receipt)
+ local row;for _,candidate in pairs(rows)do row=candidate end
+ local ok,parts=pcall(ns.WeaponAttribution.Split,row,c,_G)
+ ns.Records.Observe(c,receipt,ok and parts or {})
+end
+-- One-time pass over retained receipts so existing history yields records.
+function S:BackfillRecords()
+ local c=self:Character()
+ if not c or c.recordsBackfilled==1 or not ns.Records then return end
+ for _,id in ipairs(c.order)do local receipt=c.receipts[id];if receipt then self:ObserveRecords(receipt)end end
+ c.records=c.records or {character={},weapons={}}
+ c.recordsBackfilled=1
 end
