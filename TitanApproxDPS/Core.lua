@@ -20,6 +20,7 @@ local function initialize()
  TitanApproxDPSDB=type(TitanApproxDPSDB)=='table' and TitanApproxDPSDB or {}
  ns.store=ns.Storage.Open(TitanApproxDPSDB,id);if ns.store.readonly then ns.Print('Future database schema preserved; recording disabled.');return end
  ns.store:BackfillRecords()
+ if ns.TooltipHook then ns.TooltipHook.Attach(_G)end
  local character=ns.store:Character();if UnitClass then local _,class=UnitClass('player');if ns.Capabilities.IsPublic(class) and type(class)=='string' then character.class=class end end;if UnitName then local name=UnitName('player');if ns.Capabilities.IsPublic(name) and type(name)=='string'then character.name=name end end;local valid=pcall(ns.store.Rebuild,ns.store);if not valid then ns.store.readonly=true;ns.Print('Malformed statistics preserved; recording disabled.');return end;ns.capabilities=ns.Capabilities.Probe(_G);if character.reportGeneration==nil then ns.store:ResetReports(time and time() or nil)end;ns.Rebaseline();ns.Titan.Initialize();ns.Minimap.Initialize()
  SLASH_TITANAPPROXDPS1='/tadps'
  SlashCmdList.TITANAPPROXDPS=function(input)
