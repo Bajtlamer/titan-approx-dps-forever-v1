@@ -98,3 +98,22 @@ User requested colored tooltip values, violet slashes, and an illustrated websit
 Created website-assets/titan-approx-dps-tooltip-guide.png with the built-in image generation tool from the supplied screenshot. Inspected generated numbers and explanations against the screenshot, including bow1242,712/530,spell shares and pet475. Retained its prompt as website-assets/Codex-tooltip-illustration-prompt.txt. The illustration is a website asset and is not shipped in the addon runtime ZIP.
 
 0.1.7 delivery: all 16 Lua suites, 3 Python tests and shipped compilation passed. Additional direct rendering checks verified lifetime, damage, ability, DPS, percentage and violet slash color markup, including gray unavailable values. Package bytes/checksum verified. Installation preview succeeded but apply failed at staging-directory creation with Operation not permitted. git add failed creating .git/index.lock with Operation not permitted. No installation, source commit, tag, push or GitHub release was completed. Website PNG and retained generation prompt are saved in website-assets/. In-game appearance awaits user verification.
+
+## Candidates 0.1.9-alpha to 0.1.17-alpha: records, statistics, window and estimates
+
+Plan: plan-weapon-records-stats-estimates.md (user-approved, executed inline, one releasable version per stage, in-game verification by the user after each). Reference: ref-weapon-records-and-estimates.md.
+
+- 0.1.9: protected best-fight records (Records.lua). Max-only, import merges by maximum, malformed data rejected, backfill from retained history. Test tests/records.lua.
+- 0.1.10: running statistics (Stats.lua) and categories (Categories.lua). Samples derived from receipts, so native revisions replace their sample; permanent weighted summary for retired receipts. Tests stats.lua and categories.lua.
+- 0.1.11: rough comparison in item tooltips (Compare.lua, TooltipHook.lua). Added during execution at the user's request, before the tooltip and window stages.
+- 0.1.12: Titan tooltip without paging, three text levels, a color per value type (Style.lua). Reports.Pages and wheel paging removed.
+- 0.1.13: new results window (UI/ViewModel.lua, UI/Widgets.lua, UI/Window.lua). 0.1.14 replaced button imitations with native tabs, drop-down boxes, search box and check box after user feedback; templates confirmed from another addon running in the same client (TitanGatheredForeverV3).
+- 0.1.15: build snapshot at combat start (BuildSnapshot.lua), visible in the Data and History tabs.
+- 0.1.16: calibrated estimate (Estimator.lua) with a 20 fight minimum.
+- 0.1.17: documentation and cleanup. Comparisons.lua and Metrics.lua removed (unused since the old window was replaced); their regression checks were ported to storage-level assertions.
+
+Deviations from the plan: the rough comparison was added as its own version; the Compare tab compares observed results of two recorded weapons rather than estimating an arbitrary item (the estimate lives in the item tooltip); version numbers shifted by the extra releases.
+
+Findings fixed along the way: two Python tests hard-coded a version and failed on every release (now read the manifest); check.py hung when it inherited an open stdin (run with stdin closed); a window test exposed a fragile search-box capability check (hardened); an estimator test depended on floating-point summation order (now integer damage like the real meter). The illustrated tooltip guide in website-assets predates the 0.1.12 colors and layout and is outdated; the folder is excluded locally from git.
+
+Open: in-game verification of the 0.1.15 and 0.1.16 behavior needs at least 20 fights with a build snapshot per weapon; whether website-assets belongs in the repository is undecided.

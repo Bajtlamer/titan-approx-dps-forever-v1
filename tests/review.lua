@@ -1,4 +1,4 @@
-local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','Meter','Equipment','Metrics','Sessions','Methods','Comparisons','Records','Categories','Stats','Json','BuildSnapshot','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
+local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','Meter','Equipment','Sessions','Methods','Records','Categories','Stats','Json','BuildSnapshot','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
 assert(ns.Storage.Open({schema=1,characters={p={}}},'p').readonly,'corrupt saved data must be preserved read-only')
 local db=ns.Storage.Open({},'p');db:Character();db:Rebuild();local doc=assert(ns.Json.Decode(ns.Transfer.Export(db)));doc.data.selectedMethod={};assert(not ns.Transfer.Stage(ns.Json.Encode(doc),db),'invalid method accepted')
 local n=100
@@ -9,5 +9,6 @@ for t=0,100,10 do r:Tick(t)end
 r:Handle('DAMAGE_METER_COMBAT_SESSION_UPDATED',0,99);r:Tick(200);assert(db:Character().totalDamage==100,'stale equipment admitted unrelated session')
 n=200;r:Handle('DAMAGE_METER_COMBAT_SESSION_UPDATED',0,1);r:Tick(300);assert(db:Character().totalDamage==200,'late revision ignored')
 local d=ns.Storage.Open({},'d');d:UpsertContribution({receiptID='1',profile='w',mode='pve',damage=100,seconds=10,spells={}});d:UpsertContribution({receiptID='2',profile='w',mode='pve',damage=900,spells={}})
-assert(ns.Comparisons.Rows(d,{combatMode='pve'})[1].dps==10,'untimed damage inflated DPS')
+local pool;for _,row in pairs(d:Character().rows)do pool=row end
+assert(pool.damage==1000 and pool.timedDamage==100 and pool.seconds==10,'untimed damage must stay out of the timed DPS pool')
 print('PASS five independent review regressions')

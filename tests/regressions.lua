@@ -1,4 +1,4 @@
-local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','Meter','Equipment','Metrics','Sessions','Methods','Comparisons','Records','Categories','Stats','Json','BuildSnapshot','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
+local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','Meter','Equipment','Sessions','Methods','Records','Categories','Stats','Json','BuildSnapshot','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
 local db=ns.Storage.Open({},'p');local methods=ns.Methods.New(db)
 local one=methods:Define('one','');local two=methods:Define('two','');assert(one.methodID~=two.methodID,'method IDs collide')
 local j=ns.Json;local text=j.Encode({name='a\nb',n=42,items={1,2}});local v=assert(j.Decode(text));assert(v.name=='a\nb' and v.items[2]==2)

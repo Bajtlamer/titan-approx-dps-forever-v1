@@ -1,10 +1,12 @@
 # Titan Approx DPS
 
-Development candidate `0.1.8-alpha` for World of Warcraft Forever, interface `16001`.
+Development candidate `0.1.17-alpha` for World of Warcraft Forever, interface `16001`.
 
 Analyzes completed native damage-meter sessions. No live DPS display or combat-log event registration. Optional Titan integration; the minimap launcher and results window work independently.
 
 ## Candidate behavior
+
+Since 0.1.9: protected best-fight records, converging per-weapon statistics (typical and recent DPS with confidence), separate melee, ranged, spell and pet categories, a build snapshot per fight, a results window with native tabs, drop-downs and search, and rough and calibrated weapon comparisons in item tooltips. Exact definitions, formulas and limits are in [ref-weapon-records-and-estimates.md](ref-weapon-records-and-estimates.md); the staged plan is in [plan-weapon-records-stats-estimates.md](plan-weapon-records-stats-estimates.md).
 
 - Stores observed damage, spell summaries and weapon-loadout context after combat, with duplicate-safe replacement of retained session contributions.
 - Preserves 200 recent sessions and folds older retained receipts into historical aggregates. Current weapon reports use a separately resettable report period; character and weapon lifetime histories remain intact.

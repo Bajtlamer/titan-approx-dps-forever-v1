@@ -8,6 +8,11 @@
 
 **Tech stack:** Lua 5.1 semantics (Forever 1.60.1, interface 16001), existing `tests/*.lua` suites run by `tools/check.py` through LuaJIT, Python tests for packaging.
 
+
+## Execution status
+
+All stages are implemented. Versions: Stage 0 baseline (0.1.8 commit), Stage 1 records 0.1.9, Stage 2 statistics and categories 0.1.10, rough comparison 0.1.11 (added), Stage 3 tooltip 0.1.12, Stage 4 window 0.1.13 and 0.1.14 (native controls), Stage 5 build snapshot 0.1.15, Stage 6 estimator 0.1.16, Stage 7 documentation and cleanup 0.1.17. Where the result differs from this plan see Codex-development-progress.md; definitions are in ref-weapon-records-and-estimates.md.
+
 ## Fixed constraints (from AGENTS.md and the user)
 
 - Post-fight analysis only. No combat-log events. No invented crit, miss or weapon attribution.
