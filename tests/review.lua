@@ -1,4 +1,4 @@
-local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','Meter','Equipment','Metrics','Sessions','Methods','Comparisons','Records','Categories','Stats','Json','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
+local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','Meter','Equipment','Metrics','Sessions','Methods','Comparisons','Records','Categories','Stats','Json','BuildSnapshot','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
 assert(ns.Storage.Open({schema=1,characters={p={}}},'p').readonly,'corrupt saved data must be preserved read-only')
 local db=ns.Storage.Open({},'p');db:Character();db:Rebuild();local doc=assert(ns.Json.Decode(ns.Transfer.Export(db)));doc.data.selectedMethod={};assert(not ns.Transfer.Stage(ns.Json.Encode(doc),db),'invalid method accepted')
 local n=100

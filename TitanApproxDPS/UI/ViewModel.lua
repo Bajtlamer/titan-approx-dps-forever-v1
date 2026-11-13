@@ -155,6 +155,33 @@ local function header(store,list)
   bestFight=best.fightDamage and best.fightDamage.value,bestDps=best.fightDPS and best.fightDPS.value}
 end
 
+-- One readable line for a build snapshot; only fields that were readable are mentioned.
+local function describeBuild(b)
+ local parts={}
+ local function add(text)parts[#parts+1]=text end
+ if b.level then add('Level '..b.level)end
+ local stats={}
+ for _,pair in ipairs({{'strength','Str'},{'agility','Agi'},{'stamina','Sta'},{'intellect','Int'},{'spirit','Spi'}})do
+  if b[pair[1]] then stats[#stats+1]=pair[2]..' '..b[pair[1]]end
+ end
+ if #stats>0 then add(table.concat(stats,' '))end
+ if b.attackPower then add('Attack power '..b.attackPower)end
+ if b.rangedAttackPower then add('Ranged attack power '..b.rangedAttackPower)end
+ if b.spellPower then add('Spell power '..b.spellPower)end
+ local crit={}
+ if b.meleeCrit then crit[#crit+1]='melee '..string.format('%.1f%%',b.meleeCrit)end
+ if b.rangedCrit then crit[#crit+1]='ranged '..string.format('%.1f%%',b.rangedCrit)end
+ if b.spellCrit then crit[#crit+1]='spell '..string.format('%.1f%%',b.spellCrit)end
+ if #crit>0 then add('Crit '..table.concat(crit,' '))end
+ local speed={}
+ for _,pair in ipairs({{'mainHandSpeed','main'},{'offHandSpeed','off'},{'rangedSpeed','ranged'}})do
+  if b[pair[1]] then speed[#speed+1]=pair[2]..' '..string.format('%.2f',b[pair[1]])end
+ end
+ if #speed>0 then add('Speed '..table.concat(speed,' '))end
+ if b.source then add('read '..b.source)end
+ return table.concat(parts,' | ')
+end
+
 local hints={
  Overview='Typical DPS is a duration-weighted average of fights of at least 10 seconds and gets more accurate with use. Best values and lifetime damage are protected and cannot be reset.',
  Weapons='Select a weapon to list every spell it is credited with. Confidence grows with the number of fights. Damage follows the selected period.',
@@ -224,6 +251,7 @@ local function buildHistory(store,query)
   {key='damage',label='Damage',width=110,align='right'},{key='seconds',label='Seconds',width=80,align='right'},
   {key='dps',label='DPS',width=90,align='right'},{key='grouped',label='Grouped',width=70,align='left'},
   {key='session',label='Native session',width=110,align='right'},
+  {key='build',label='Build bucket',width=110,align='left'},
  }
  local rows={}
  for i=#c.history,1,-1 do
@@ -240,6 +268,7 @@ local function buildHistory(store,query)
      dps and cell(one(dps),'dps',dps) or unavailable(),
      cell(context.grouped==true and 'Yes' or context.grouped==false and 'No' or 'Not recorded','label',nil),
      r.nativeSessionID and cell(tostring(r.nativeSessionID),'label',r.nativeSessionID) or unavailable(),
+     r.build and r.build.bucket and cell(r.build.bucket,'label',r.build.bucket) or unavailable(),
     }}
    end
   end
@@ -254,6 +283,11 @@ local function buildData(store,query,env)
  env=env or {}
  local c=store:Character()
  local columns={{key='item',label='Item',width=260,align='left'},{key='value',label='Value',width=640,align='left'}}
+ local withBuild,latest=0,nil
+ for i=#c.history,1,-1 do
+  local r=c.receipts[c.history[i]]
+  if r and r.build then withBuild=withBuild+1;latest=latest or r.build end
+ end
  local entries={
   {'Recording',env.recording and 'Enabled' or 'Paused',env.recording and 'good' or 'warning'},
   {'Native damage meter',env.meter and 'Available' or 'Unavailable',env.meter and 'good' or 'bad'},
@@ -262,6 +296,8 @@ local function buildData(store,query,env)
   {'Character lifetime damage',whole(c.totalDamage),'lifetime'},
   {'Protected best fight',c.records and c.records.character and c.records.character.fightDamage and whole(c.records.character.fightDamage.value) or 'Unavailable','record'},
   {'Stored fights',tostring(#c.history),'label'},
+  {'Fights with a build snapshot',withBuild..' of '..#c.history..' stored fights',withBuild>0 and 'label' or 'unavailable'},
+  {'Latest build snapshot',latest and describeBuild(latest) or 'None yet: stats are read when a fight starts.',latest and 'label' or 'unavailable'},
   {'Critical hits, single hit maxima, misses','Unavailable: the native damage meter provides fight summaries only.','unavailable'},
   {'PvE / PvP classification','Not verified until complete recipient evidence is available.','unavailable'},
   {'Maximum meaning','Best values are the best total, best DPS and best spell in one fight, not a single hit.','hint'},

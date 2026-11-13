@@ -69,6 +69,12 @@ local h=build({tab='History'});assert(#h.rows>=14);assert(h.rows[1].cells[1].tex
 h=build({tab='History',scope='pvp'});assert(#h.rows==1 and h.rows[1].cells[1].text=='Player')
 h=build({tab='History',search='player'});assert(#h.rows==1)
 
+-- build snapshots are visible in History and Data
+local lastId=c.history[#c.history];c.receipts[lastId].build={attackPower=110,strength=15,spellPower=0,source='combat start',bucket='ap100-sp0'}
+local hb=build({tab='History'});assert(hb.rows[1].cells[8].text=='ap100-sp0' and hb.rows[2].cells[8].text=='Unavailable','build bucket column')
+local db2=build({tab='Data'});local dataText={};for _,r in ipairs(db2.rows)do dataText[#dataText+1]=r.cells[1].text..'='..r.cells[2].text end
+local joinedData=table.concat(dataText,'\n')
+assert(joinedData:find('Fights with a build snapshot=1 of',1,true) and joinedData:find('Attack power 110',1,true) and joinedData:find('Spell power 0',1,true) and joinedData:find('read combat start',1,true),'latest build described: '..joinedData)
 -- data tab explains capture state
 local d=build({tab='Data'});local txt={};for _,r in ipairs(d.rows)do txt[#txt+1]=r.cells[1].text end
 assert(table.concat(txt,'|'):find('Recording',1,true))

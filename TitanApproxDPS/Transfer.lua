@@ -11,6 +11,7 @@ local function validate(c)
 assert(c.class==nil or (type(c.class)=='string' and c.class:match('^[A-Z]+$')),'Invalid class');assert(c.preservedLifetimeDamage==nil or ns.Number(c.preservedLifetimeDamage),'Invalid protected lifetime');if c.reportHidden~=nil then assert(type(c.reportHidden)=='table','Invalid report settings');for k,v in pairs(c.reportHidden)do assert(type(k)=='string' and type(v)=='boolean','Invalid hidden profile')end end
  assert(c.records==nil or ns.Records.Validate(c.records),'Invalid records')
  assert(c.baseStats==nil or ns.Stats.ValidateBase(c.baseStats),'Invalid statistics summary')
+ for _,r in pairs(c.receipts)do assert(r.build==nil or ns.BuildSnapshot.Validate(r.build),'Invalid build snapshot')end
  for _,field in ipairs({'baseDamage','baseSeconds','totalDamage','totalSeconds','sequence','epoch','revision'})do assert(ns.Number(c[field]),'Invalid '..field)end
  for _,field in ipairs({'receipts','order','history','baseRows','methods','profiles'})do assert(type(c[field])=='table','Missing '..field)end
  local modes={pve=true,pvp=true,mixed=true,unknown=true}

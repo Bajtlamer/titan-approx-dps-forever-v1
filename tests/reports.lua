@@ -1,4 +1,4 @@
-local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','Comparisons','SpellRules','WeaponAttribution','Reports','Records','Categories','Stats','Json','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
+local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','Comparisons','SpellRules','WeaponAttribution','Reports','Records','Categories','Stats','Json','BuildSnapshot','Transfer'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
 local db=ns.Storage.Open({},'p')
 local function add(id,mode,damage,spell,method)db:UpsertContribution({receiptID=id,profile='bow',mode=mode,damage=damage,seconds=10,method=method,spells={{spellID=spell,damage={value=damage}}}})end
 add('1','pve',60,1);add('2','pve',40,2,'test:1');add('3','pvp',100,1)

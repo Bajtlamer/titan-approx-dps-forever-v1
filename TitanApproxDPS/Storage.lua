@@ -11,6 +11,7 @@ function S.Open(saved,id)
     for _,k in ipairs({'receipts','order','history','baseRows','methods','profiles'})do assert(type(c[k])=='table')end
     assert(c.records==nil or not ns.Records or ns.Records.Validate(c.records))
     assert(c.baseStats==nil or not ns.Stats or ns.Stats.ValidateBase(c.baseStats))
+    for _,r in pairs(c.receipts)do assert(r.build==nil or not ns.BuildSnapshot or ns.BuildSnapshot.Validate(r.build))end
     for _,k in ipairs({'baseDamage','baseSeconds','totalDamage','sequence','epoch','revision'})do assert(ns.Number(c[k]))end
     for _,row in pairs(c.baseRows)do if type(row)=='table' and type(row.spells)=='table'then for _,s in pairs(row.spells)do assert(type(s)=='table' and ns.ValidOrigins(s.origins,s.damage,s.timedDamage))end end end
     for _,r in pairs(c.receipts)do assert(type(r)=='table' and ns.Number(r.damage) and type(r.spells)=='table' and type(r.profile)=='string' and ({pve=true,pvp=true,mixed=true,unknown=true})[r.mode]);for _,spell in ipairs(r.spells)do assert(type(spell)=='table' and type(spell.damage)=='table' and ns.Number(spell.damage.value))end end
