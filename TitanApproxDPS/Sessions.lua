@@ -8,18 +8,19 @@ function S:Baseline(rows)
 end
 function S:Handle(event,kind,id)
  local c=self.store:Character();if not c then return end
- if event=='PLAYER_REGEN_DISABLED' then self.combat=true;self.initial=self.equipment:Snapshot();self.mixed=false;self.method=ns.Copy(c.selectedMethod)
+ if event=='PLAYER_REGEN_DISABLED' then self.context=self:Context();self.combat=true;self.initial=self.equipment:Snapshot();self.mixed=false;self.method=ns.Copy(c.selectedMethod)
+ elseif event=='PLAYER_TARGET_CHANGED' and self.combat then self.context.targetChanges=self.context.targetChanges+1
  elseif event=='PLAYER_EQUIPMENT_CHANGED' and self.combat then self.mixed=true
  elseif event=='PLAYER_REGEN_ENABLED' then self.combat=false;for _,p in pairs(self.pending)do if not p.finished then p.mixed=self.mixed;p.finished=true end end
  elseif event=='DAMAGE_METER_RESET' then self.pending={};self.tracked={};self.seen={};c.epoch=c.epoch+1;self.initial=nil
- elseif event=='DAMAGE_METER_COMBAT_SESSION_UPDATED' and self.meter.capabilities.damage and ns.Capabilities.IsPublic(kind,self.meter.api) and ns.Capabilities.IsPublic(id,self.meter.api) and kind==self.meter.api.Enum.DamageMeterType.DamageDone and type(id)=='number' and not self.paused then
+ elseif event=='DAMAGE_METER_COMBAT_SESSION_UPDATED' and self.meter.capabilities.damage and ns.Capabilities.IsPublic(kind,self.meter.api) and ns.Capabilities.IsPublic(id,self.meter.api) and kind==self.meter.api.Enum.DamageMeterType.DamageDone and type(id)=='number' and id>0 and not self.paused then
   local p=self.pending[id]
   if not p and self.tracked[id] then p=self.tracked[id];p.tries=0;p.at=self.clock();self.pending[id]=p end
   if not p and not self.seen[id] then
    local count=0;for _ in pairs(self.pending)do count=count+1 end
    if count>=32 then self.gap='Pending session limit reached';return end
    c.sequence=c.sequence+1
-   p={receiptID=c.epoch..':'..c.sequence,profile=self.initial,method=ns.Copy(self.method),at=self.clock(),tries=0,eligible=self.combat and self.initial~=nil,mixed=self.mixed};self.pending[id]=p;self.tracked[id]=p;self.seen[id]=true
+   p={receiptID=c.epoch..':'..c.sequence,profile=self.initial,method=ns.Copy(self.method),at=self.clock(),tries=0,eligible=self.combat and self.initial~=nil,mixed=self.mixed,context=self.context};self.pending[id]=p;self.tracked[id]=p;self.seen[id]=true
   end
  end
 end
@@ -37,11 +38,24 @@ function S:Tick(now)
    if r then
     local e=p.profile;local c=self.store:Character();local profile=(not p.mixed and e and e.complete) and e.id or 'Mixed or incomplete equipment'
     c.profiles[profile]=e and e.name or profile
-    local changed=self.store:UpsertContribution({receiptID=p.receiptID,profile=profile,mode=r.combatMode,damage=r.totalDamage.value,seconds=r.duration.value,spells=r.spells,method=p.method and (p.method.methodID..':'..p.method.version),nativeDPS=r.nativeDPS.value,at=now,reason=r.combatModeReason})
+    local changed=self.store:UpsertContribution({receiptID=p.receiptID,profile=profile,mode=r.combatMode,damage=r.totalDamage.value,seconds=r.duration.value,spells=r.spells,method=p.method and (p.method.methodID..':'..p.method.version),nativeDPS=r.nativeDPS.value,at=now,reason=r.combatModeReason,nativeSessionID=id,context=ns.Copy(p.context)})
     if changed and self.changed then self.changed()end
     p.tries=p.tries+1;p.at=now+({0.5,1,2,5,10})[math.min(p.tries,5)]
     if p.tries>=5 then self.pending[id]=nil end
    else p.tries=p.tries+1;p.at=now+({0.5,1,2,5,10})[math.min(p.tries,5)];self.gap=reason end
   end
  end end
+end
+
+function S:Context()
+ local api=self.meter.api;local context={targetChanges=0,targetName='Target not recorded'}
+ local function read(fn,...)
+  if type(fn)~='function'then return nil end
+  local ok,value=pcall(fn,...);if ok and ns.Capabilities.IsPublic(value,api)then return value end
+ end
+ local player=read(api.UnitIsPlayer,'target');local name=read(api.UnitName,'target')
+ if player==false and type(name)=='string'then context.targetName=name;context.targetKind='npc'
+ elseif player==true then context.targetName='Player target';context.targetKind='player'end
+ local grouped=read(api.IsInGroup);if type(grouped)=='boolean'then context.grouped=grouped end
+ return context
 end

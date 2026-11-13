@@ -1,0 +1,20 @@
+local ns={};for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','SpellRules','WeaponAttribution','Reports'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
+local api={C_Item={GetItemInfo=function(id)return 'Heavy Shortbow','|cff1eff00|Hitem:3036|h[Heavy Shortbow]|h|r',2 end}}
+local db=ns.Storage.Open({},'p');local function hit(id,profile,amount)db:UpsertContribution({receiptID=id,profile=profile,mode='unknown',damage=amount,seconds=10,spells={{spellID=75,damage={value=amount}}}})end
+hit('1','16:empty;17:empty;18:3036:0:0:0:0:0:0:111:12:0',40)
+hit('2','16:empty;17:empty;18:3036:0:0:0:0:0:0:222:13:0',60)
+local r=ns.Reports.Build(db,'all',api);assert(#r.groups==1 and r.groups[1].damage==100,'same item duplicated by incidental link fields');assert(r.groups[1].name:find('Heavy Shortbow',1,true))
+local life=db:Character().totalDamage;db:ResetReports();assert(db:Character().totalDamage==life);assert(#ns.Reports.Build(db,'all',api).groups==0)
+hit('1','16:empty;17:empty;18:3036:0',45);assert(#ns.Reports.Build(db,'all',api).groups==0,'old revision repopulated reset reports')
+hit('3','16:empty;17:empty;18:3036:0',10);r=ns.Reports.Build(db,'all',api);assert(#r.groups==1 and r.groups[1].damage==10 and r.groups[1].lifetimeDamage==115)
+assert(db:Character().totalDamage==115)
+print('PASS normalized weapon identity, item names and report-only reset preserving both lifetimes')
+assert(loadfile('TitanApproxDPS/Json.lua'))('x',ns);assert(loadfile('TitanApproxDPS/Transfer.lua'))('x',ns)
+local small=ns.Storage.Open({},'p');small:UpsertContribution({receiptID='small',profile='16:empty;17:empty;18:3036:0',mode='unknown',damage=1,seconds=1,spells={{spellID=75,damage={value=1}}}})
+assert(not ns.Transfer.Stage(ns.Transfer.Export(small),db),'older restore erased weapon lifetime')
+print('PASS restore cannot erase weapon lifetime history')
+local named=ns.WeaponAttribution.Slots('16:empty;17:empty;18:3036:0','|cnIQ2:|Hitem:3036:0|h[Heavy Shortbow of Testing]|h|r',{})
+assert(named[18].name:find('Heavy Shortbow of Testing',1,true),'named rarity color link lost name')
+assert(ns.WeaponAttribution.Variant('3036:5:0:0:0:0:0:111:12')~=ns.WeaponAttribution.Variant('3036:6:0:0:0:0:0:222:13'),'real enchant variants incorrectly merged')
+local migrated=ns.Storage.Open(ns.Copy(db.saved),'p');migrated:Rebuild();assert(migrated:Character().totalDamage==115 and ns.Reports.Build(migrated,'all',api).groups[1].damage==10,'report reset did not survive reload')
+print('PASS named rarity colors, real variant separation and reset persistence')

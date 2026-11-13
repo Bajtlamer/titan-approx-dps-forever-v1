@@ -11,5 +11,5 @@ class Release(unittest.TestCase):
   self.assertIn('--prerelease',commands[publish]);self.assertIn('--verify-tag',commands[publish]);self.assertNotIn('--force',sum(commands,[]))
  def test_manifest_drives_package_version(self):
   spec=importlib.util.spec_from_file_location('package',ROOT/'tools/package.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
-  self.assertEqual(m.version(),'0.1.0-alpha')
+  toc=(ROOT/'TitanApproxDPS/TitanApproxDPS.toc').read_text();self.assertIn('## Version: '+m.version()+'\n',toc)
 if __name__=='__main__':unittest.main()

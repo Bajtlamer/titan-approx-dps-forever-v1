@@ -18,11 +18,14 @@ InCombatLockdown=function()return combat end
 GetInventoryItemID=function(_,slot)return slot==16 and 100 or nil end
 GetInventoryItemLink=function(_,slot)return slot==16 and '|Hitem:100:0|h[Sword]|h' or nil end
 Enum={DamageMeterType={DamageDone=0},DamageMeterSessionType={Current=1}}
-C_DamageMeter={GetAvailableCombatSessions=function()return {}end,GetCombatSessionFromID=function()reads=reads+1;return {durationSeconds=10,combatSources={{isLocalPlayer=true,totalAmount=200,amountPerSecond=20}}}end}
+C_DamageMeter={GetAvailableCombatSessions=function()return {}end,GetCombatSessionFromID=function()reads=reads+1;return {durationSeconds=10,combatSources={{isLocalPlayer=true,sourceGUID='p',totalAmount=200,amountPerSecond=20}}}end}
 C_Timer={NewTicker=function(_,f)tick=f;return {Cancel=function()tick=nil end}end}
 for line in io.lines('TitanApproxDPS/TitanApproxDPS.toc')do if line:match('%.lua$')then assert(loadfile('TitanApproxDPS/'..line))('TitanApproxDPS',ns)end end
 local event=frames[1].scripts.OnEvent
 event(nil,'PLAYER_LOGIN');combat=true;event(nil,'PLAYER_REGEN_DISABLED');event(nil,'DAMAGE_METER_COMBAT_SESSION_UPDATED',0,1);tick();assert(reads==0)
 combat=false;event(nil,'PLAYER_REGEN_ENABLED');now=1;tick();assert(ns.store:Character().totalDamage==200)
-SlashCmdList.TITANAPPROXDPS('');assert(ns.Window.frame:IsShown())
+SlashCmdList.TITANAPPROXDPS('window');assert(ns.Window.frame:IsShown())
 print('PASS simulated login, event capture, combat deferral and results window')
+local life=ns.store:Character().totalDamage;combat=true;ns.ResetWeaponReports();assert(ns.store:Character().totalDamage==life and next(ns.store:Character().reportRows)~=nil)
+combat=false;ns.ResetWeaponReports();assert(ns.store:Character().totalDamage==life and next(ns.store:Character().reportRows)==nil)
+print('PASS live reset routing refuses combat and preserves lifetime outside combat')

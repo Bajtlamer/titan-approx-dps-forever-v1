@@ -11,8 +11,8 @@ function ns.TransferView.Show(import)
   local b=CreateFrame('Button',nil,f,'UIPanelButtonTemplate');b:SetSize(220,25);b:SetPoint('BOTTOMLEFT',15,20);b:SetText('Validate / confirm restore')
   b:SetScript('OnClick',function()
    if not v.import or InCombatLockdown()then return end
-   if not v.preview then local p,err=ns.Transfer.Stage(e:GetText(),ns.store);v.preview=p;v.status:SetText(p and ('Restore from '..tostring(p.source)..' to this character. Click again to replace statistics; a backup is retained.') or err)
-   else local ok,err=ns.Transfer.Apply(v.preview,ns.store);v.preview=nil;if ok then ns.Rebaseline();ns.Window.Refresh();v.status:SetText('Restored. Previous statistics retained as backup.')else v.status:SetText(err)end end
+   if not v.preview then local p,err=ns.Transfer.Stage(e:GetText(),ns.store);v.preview=p;v.status:SetText(p and ('Restore from '..tostring(p.source)..' to this character. Click again to restore reports. Character lifetime cannot decrease; a backup is retained.') or err)
+   else local ok,err=ns.Transfer.Apply(v.preview,ns.store);v.preview=nil;if ok then ns.Rebaseline();ns.Window.Refresh();ns.Titan.Refresh();v.status:SetText('Restored. Previous statistics retained as backup.')else v.status:SetText(err)end end
   end)
   e:SetScript('OnTextChanged',function()v.preview=nil end)
  end

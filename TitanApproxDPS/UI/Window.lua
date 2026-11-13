@@ -5,11 +5,12 @@ local function button(parent,label,x,y,width,fn)
  local b=CreateFrame('Button',nil,parent,'UIPanelButtonTemplate');b:SetSize(width,24);b:SetPoint('TOPLEFT',x,y);b:SetText(label);b:SetScript('OnClick',fn);return b
 end
 local function amount(v)return v and string.format('%.1f',v) or 'Unavailable' end
+local function damageAmount(v)return ns.DamageNumber(v) end
 function W.Refresh()
  if not W.frame or not W.frame:IsShown() or not ns.store then return end
  local c=ns.store:Character();if not c then W.text:SetText('Unsupported future database schema. Recording disabled.');return end
  local mode=ns.store.saved.settings.mode
- local lines={'Mode: '..mode..' | Completed fights only','Lifetime recorded damage: '..amount(c.totalDamage),''}
+ local lines={'Mode: '..mode..' | Completed fights only','Lifetime recorded damage: '..damageAmount(c.totalDamage),''}
  local rows=ns.Comparisons.Rows(ns.store,{combatMode=mode})
  if W.tab=='Pets' then lines[#lines+1]='Pet ownership and owner inclusion require live verification. Separate pet totals are unavailable.'
  elseif W.tab=='Data' then
@@ -20,23 +21,29 @@ function W.Refresh()
   lines[#lines+1]='Capture note: '..(ns.recorder.gap or 'No reported gap')
   lines[#lines+1]='Commands: /tadps pause, resume, export, import, method NAME'
  elseif W.tab=='History' then
-  for i=#c.history,math.max(1,#c.history-19),-1 do local r=c.receipts[c.history[i]];if r then lines[#lines+1]=r.receiptID..' | '..r.mode..' | '..amount(r.damage)..' damage | '..amount(r.seconds)..' seconds' end end
+  for i=#c.history,math.max(1,#c.history-19),-1 do local r=c.receipts[c.history[i]];if r then lines[#lines+1]=r.receiptID..' | '..r.mode..' | '..damageAmount(r.damage)..' damage | '..amount(r.seconds)..' seconds' end end
  elseif W.tab=='Spells' then
-  local sums={};local seconds=0
-  for _,r in ipairs(rows)do seconds=seconds+r.seconds;for id,s in pairs(r.spells)do sums[id]=(sums[id] or 0)+s.damage end end
+  local sums={};local timed={};local seconds=0
+  for _,r in ipairs(rows)do seconds=seconds+r.seconds;for id,s in pairs(r.spells)do sums[id]=(sums[id] or 0)+s.damage;timed[id]=(timed[id] or 0)+(s.timedDamage or 0) end end
   local ids={};for id in pairs(sums)do ids[#ids+1]=id end;table.sort(ids,function(a,b)return sums[a]>sums[b]end)
-  for _,id in ipairs(ids)do local name=C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id) or ('Spell '..id);lines[#lines+1]=name..' | damage '..amount(sums[id])..' | per combat second '..amount(seconds>0 and sums[id]/seconds or nil)end
+  for _,id in ipairs(ids)do local name=C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id) or ('Spell '..id);lines[#lines+1]=name..' | damage '..damageAmount(sums[id])..' | per combat second '..amount(seconds>0 and timed[id]/seconds or nil)end
  elseif W.tab=='Compare' then
-  lines[#lines+1]='Comparison of the first two recorded loadouts in this scope:'
+  lines[#lines+1]='Equipment-context comparison of the first two recorded sets:'
   if #rows>=2 then
    for i=1,2 do local r=rows[i];lines[#lines+1]=(c.profiles[r.profile] or r.profile)..' | '..amount(r.dps)..' damage/combat second | '..r.sessions..' sessions' end
    lines[#lines+1]='Observed difference: '..amount(rows[1].dps and rows[2].dps and rows[1].dps-rows[2].dps)
   else lines[#lines+1]='Record at least two loadouts for comparison.' end
   lines[#lines+1]='Pure-mode ranking requires 10 complete sessions, 120 seconds and verified mode.'
  else
-  local start=(W.page-1)*12+1
-  for i=start,math.min(#rows,start+11)do local r=rows[i];lines[#lines+1]=(c.profiles[r.profile] or r.profile)..'\nDamage '..amount(r.damage)..' | per combat second '..amount(r.dps)..' | sessions '..r.sessions..'\n'..(r.eligible and 'Eligible sample' or 'Not eligible for pure-mode ranking')..'\n' end
-  if #rows==0 then lines[#lines+1]='No completed results in this mode. Unclassified sessions are kept under unknown.'end
+  local groups=ns.Reports.Build(ns.store,mode).groups
+  local start=(W.page-1)*8+1
+  for i=start,math.min(#groups,start+7)do local g=groups[i]
+   lines[#lines+1]=g.name..'\nClassified lifetime '..damageAmount(g.lifetimeDamage)..' | selected damage '..damageAmount(g.damage)..' | combat DPS '..amount(g.dps)
+   lines[#lines+1]='Auto-attacks '..damageAmount(g.autoDamage)..' | abilities '..damageAmount(g.abilityDamage)
+   for _,spell in ipairs(g.spells)do lines[#lines+1]='Spell '..spell.spellID..': '..damageAmount(spell.damage)..' ('..(spell.percent and string.format('%.1f%%',spell.percent) or 'Unavailable')..')'end
+   lines[#lines+1]=''
+  end
+  if #groups==0 then lines[#lines+1]='No visible classified results in this mode.'end
   lines[#lines+1]='Page '..W.page
  end
  W.text:SetText(table.concat(lines,'\n'))
