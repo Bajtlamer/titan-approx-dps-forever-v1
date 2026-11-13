@@ -1,24 +1,14 @@
 local _,ns=...
-local T={page=1};ns.Titan=T
+local T={};ns.Titan=T
+local S=ns.Style
+local colors=S.colors
 local function number(v)return ns.DamageNumber(v)end
-local colors = {
- damage = '74D5FF',
- ability = 'F3A5CE',
- dps = 'FFBF4D',
- percent = '7FD694',
- lifetime = 'FFD76A',
- slash = 'C878FF',
- unavailable = 'A0A0A0',
- record = 'FF9F43',
-}
-local function colored(value, color)
- return '|cff' .. color .. value .. '|r'
+local function colored(value,color)return S.Color(value,color)end
+local function metric(value,color)
+ return colored(value,value=='Unavailable' and colors.unavailable or color)
 end
-local function metric(value, color)
- return colored(value, value == 'Unavailable' and colors.unavailable or color)
-end
-local function pair(left, leftColor, right, rightColor)
- return metric(left, leftColor) .. colored(' / ', colors.slash) .. metric(right, rightColor)
+local function pair(left,leftColor,right,rightColor)
+ return metric(left,leftColor)..colored(' / ',colors.separator)..metric(right,rightColor)
 end
 local function spellName(id)
  local ok,name=pcall(function()return C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)end)
@@ -26,7 +16,7 @@ local function spellName(id)
 end
 local function scopeName(mode)return ({all='All fights',pve='PvE',pvp='PvP',mixed='Mixed PvE/PvP',unknown='Combat type not verified'})[mode] or mode end
 local function separator(tip)
- tip:AddLine(' ')
+ tip:AddLine(' ');S.Style(tip,'hint')
  local name=tip.GetName and tip:GetName();local line=name and _G[name..'TextLeft'..tip:NumLines()]
  if line then
   local rule=tip.rules[tip.ruleCount+1]
@@ -34,61 +24,74 @@ local function separator(tip)
   tip.ruleCount=tip.ruleCount+1;rule:ClearAllPoints();rule:SetPoint('LEFT',line,'LEFT',0,-4);rule:SetPoint('RIGHT',tip,'RIGHT',-12,0);rule:Show()
  end
 end
+-- Row helpers: each line gets a color per value type and one of three text levels.
+local function title(tip,text)
+ local r,g,b=S.rgb(colors.title);tip:AddLine(text,r,g,b);S.Style(tip,'title')
+end
+local function hint(tip,text)
+ local r,g,b=S.rgb(colors.hint);tip:AddLine(text,r,g,b,true);S.Style(tip,'hint')
+end
+local function row(tip,label,value,level,labelColor)
+ local r,g,b=S.rgb(labelColor or colors.label)
+ tip:AddDoubleLine(label,value,r,g,b,1,1,1);S.Style(tip,'body',level or 'body')
+end
+local MAX_SPELLS=3
 function T.Render(tip)
  local c=ns.store:Character();if not c then return end
- local mode=ns.store.saved.settings.mode;local report=ns.Reports.Build(ns.store,mode);local pages=ns.Reports.Pages(report)
- T.page=math.max(1,math.min(T.page,#pages))
- tip:AddLine('Titan Approx DPS '..ns.version,1,.8,.2)
- tip:AddDoubleLine('Character lifetime',metric(number(report.characterDamage), colors.lifetime),1,1,1,1,1,1)
- tip:AddLine('Scope: '..scopeName(mode)..' | Your recorded damage',.65,.65,.65)
- if report.preservedDamage>0 then tip:AddLine('Includes '..number(report.preservedDamage)..' protected damage from earlier history.',.65,.65,.65)end
- for _,part in ipairs(pages[T.page].groups)do
-  local g=part.group;separator(tip)
-  tip:AddLine(g.name..(part.continued and ' (continued)' or ''),1,1,1,true)
-  if g.lifetimeDamage~=g.damage then tip:AddDoubleLine(g.slot and 'Weapon lifetime (all report periods)' or 'All-time damage in this category',metric(number(g.lifetimeDamage), colors.lifetime),.8,.8,.8,1,1,1)end
-  if g.stats then
-   local st=g.stats.period
-   if st.n>0 then
-    local spread=st.spread and ('+/-'..string.format('%.0f%%',st.spread*100)) or 'Unavailable'
-    tip:AddDoubleLine('Typical DPS ('..st.n..(st.n==1 and ' fight, ' or ' fights, ')..st.confidence..')', pair(string.format('%.1f',st.typical), colors.dps, spread, colors.percent), 1,.82,.12,1,1,1)
-    if st.recentMedian then tip:AddDoubleLine('Recent DPS (last '..st.recentCount..')', metric(string.format('%.1f',st.recentMedian), colors.dps), 1,.82,.12,1,1,1)end
-    local life=g.stats.lifetime
-    if life.n~=st.n and life.typical then tip:AddDoubleLine('Typical DPS, all periods ('..life.n..' fights)', metric(string.format('%.1f',life.typical), colors.dps), .8,.8,.8,1,1,1)end
-   else
-    tip:AddDoubleLine('Typical DPS', metric('Unavailable', colors.dps), 1,.82,.12,1,1,1)
-    tip:AddLine('Needs fights of at least 10 seconds.',.65,.65,.65)
-   end
+ local mode=ns.store.saved.settings.mode;local report=ns.Reports.Build(ns.store,mode)
+ title(tip,'Titan Approx DPS '..ns.version)
+ row(tip,'Character lifetime',metric(number(report.characterDamage),colors.lifetime),'primary',colors.title)
+ local best=c.records and c.records.character and c.records.character.fightDamage
+ if best then row(tip,'Best fight (protected)',metric(number(best.value),colors.record))end
+ hint(tip,'Scope: '..scopeName(mode)..' | Your recorded damage')
+ if report.preservedDamage>0 then hint(tip,'Includes '..number(report.preservedDamage)..' protected damage from earlier history.')end
+ for _,g in ipairs(report.groups)do
+  separator(tip)
+  local kind=g.kind or 'other'
+  local rr,rg,rb=1,1,1
+  tip:AddDoubleLine(g.name,colored(ns.Categories and ns.Categories.Label(kind) or kind,colors.kind[kind] or colors.kind.other),rr,rg,rb,1,1,1);S.Style(tip,'title','hint')
+  local st=g.stats and g.stats.period
+  if st and st.n>0 then
+   local value=metric(string.format('%.1f',st.typical),colors.dps)
+   row(tip,'Typical DPS',value,'primary',colors.title)
+   local spread=st.spread and (' | +/-'..string.format('%.0f%%',st.spread*100)) or ''
+   hint(tip,st.n..(st.n==1 and ' fight, confidence ' or ' fights, confidence ')..colored(st.confidence,colors.confidence[st.confidence] or colors.unavailable)..spread)
+   if st.recentMedian then row(tip,'Recent DPS (last '..st.recentCount..')',metric(string.format('%.1f',st.recentMedian),colors.dps))end
+   local life=g.stats.lifetime
+   if life.n~=st.n and life.typical then row(tip,'Typical DPS, all periods ('..life.n..' fights)',metric(string.format('%.1f',life.typical),colors.dps))end
+  else
+   row(tip,'Typical DPS',metric('Unavailable',colors.dps),'primary',colors.title)
+   hint(tip,'Needs fights of at least 10 seconds.')
   end
-  tip:AddDoubleLine('Report damage / DPS', pair(number(g.damage), colors.damage, g.dps and string.format('%.1f',g.dps) or 'Unavailable', colors.dps), 1,.82,.12,1,1,1)
   if g.records and (g.records.fightDamage or g.records.fightDPS) then
-   local best=g.records.fightDamage and number(g.records.fightDamage.value) or 'Unavailable'
+   local bestFight=g.records.fightDamage and number(g.records.fightDamage.value) or 'Unavailable'
    local bestDps=g.records.fightDPS and string.format('%.1f',g.records.fightDPS.value) or 'Unavailable'
-   tip:AddDoubleLine('Best fight / Best DPS (protected)', pair(best, colors.record, bestDps, colors.record), 1,.82,.12,1,1,1)
+   row(tip,'Best fight / Best DPS (protected)',pair(bestFight,colors.record,bestDps,colors.record))
   end
-  tip:AddDoubleLine('Auto-attacks / abilities', pair(number(g.autoDamage), colors.damage, number(g.abilityDamage), colors.ability), 1,.82,.12,1,1,1)
-  for _,spell in ipairs(part.spells) do
-   local share = spell.percent and string.format('%.1f%%', spell.percent) or 'Unavailable'
-   tip:AddDoubleLine(spellName(spell.spellID), pair(number(spell.damage), colors.damage, share, colors.percent), 1,1,1,1,1,1)
+  row(tip,g.slot and 'Weapon lifetime' or 'Lifetime damage in this category',metric(number(g.lifetimeDamage),colors.lifetime))
+  if g.lifetimeDamage~=g.damage then row(tip,'Report period damage',metric(number(g.damage),colors.damage))end
+  row(tip,'Auto-attacks / abilities',pair(number(g.autoDamage),colors.damage,number(g.abilityDamage),colors.ability))
+  for i,spell in ipairs(g.spells)do
+   if i>MAX_SPELLS then break end
+   local share=spell.percent and string.format('%.1f%%',spell.percent) or 'Unavailable'
+   row(tip,spellName(spell.spellID),pair(number(spell.damage),colors.damage,share,colors.percent))
   end
-  if #part.spells==0 then tip:AddLine('No readable spell breakdown for this damage',.65,.65,.65)end
-  if g.unattributed>0 then tip:AddDoubleLine('Damage without spell details',metric(number(g.unattributed), colors.damage))end
-  if g.overlap then tip:AddLine('Native spell breakdown is inconsistent; totals kept without weapon assignment.',.8,.6,.3,true)end
+  if #g.spells>MAX_SPELLS then hint(tip,'+'..(#g.spells-MAX_SPELLS)..' more spells: right click > Weapon results lists all of them.')end
+  if #g.spells==0 then hint(tip,'No readable spell breakdown for this damage')end
+  if g.unattributed>0 then row(tip,'Damage without spell details',metric(number(g.unattributed),colors.damage))end
+  if g.overlap then local wr,wg,wb=S.rgb(colors.warning);tip:AddLine('Native spell breakdown is inconsistent; totals kept without weapon assignment.',wr,wg,wb,true);S.Style(tip,'hint')end
  end
- if #report.groups==0 then tip:AddLine(c.reportGeneration and next(c.reportRows or {})==nil and 'Fresh weapon reports: waiting for a completed fight.' or 'No visible results in this scope. Right click to change filters.',.8,.8,.8,true)end
- tip:AddLine('Percentages use the damage total of each group.',.65,.65,.65,true)
- tip:AddLine(string.format('Page %d/%d | Wheel: pages | Right click: settings',T.page,#pages),.8,.8,.8)
-end
-function T.BindWheel(owner)
- if owner and owner.EnableMouseWheel and owner.HookScript and not owner.tadpsWheelHooked then
-  owner:EnableMouseWheel(true);owner:HookScript('OnMouseWheel',function(frame,delta)T.page=math.max(1,T.page-delta);T.Show(frame)end);owner.tadpsWheelHooked=true
- end
+ if #report.groups==0 then hint(tip,c.reportGeneration and next(c.reportRows or {})==nil and 'Fresh weapon reports: waiting for a completed fight.' or 'No visible results in this scope. Right click to change filters.')end
+ separator(tip)
+ hint(tip,'Percentages use the damage total of each group. Typical DPS counts fights of 10 seconds or more.')
+ hint(tip,'Right click: settings, all spells, filters and fresh reports.')
 end
 function T.Show(owner)
  if not ns.store then return end
  if not T.tooltip then
   T.tooltip=CreateFrame('GameTooltip','TitanApproxDPSSummary',UIParent,'GameTooltipTemplate');T.tooltip.rules={};T.tooltip.ruleCount=0
  end
- local tip=T.tooltip;T.owner=owner;T.BindWheel(owner)
+ local tip=T.tooltip;T.owner=owner
  for _,r in ipairs(tip.rules)do r:Hide()end;tip.ruleCount=0
  tip:SetOwner(owner or UIParent,'ANCHOR_NONE');tip:ClearAllPoints()
  local bottom=owner and owner.GetBottom and owner:GetBottom();local height=UIParent:GetHeight()
@@ -132,7 +135,7 @@ function T.Menu(owner)
   if #list==0 then rules:CreateTitle('No class-specific ability rules for this class.')end
   local filters=root:CreateButton('Report scope')
   for _,value in ipairs({'all','pve','pvp','mixed','unknown'})do local mode=value
-   filters:CreateRadio(scopeName(mode),function()return ns.store.saved.settings.mode==mode end,function()ns.store.saved.settings.mode=mode;T.page=1;T.Refresh()end)
+   filters:CreateRadio(scopeName(mode),function()return ns.store.saved.settings.mode==mode end,function()ns.store.saved.settings.mode=mode;T.Refresh()end)
   end
   local visibility=root:CreateButton('Visible weapons');if visibility.SetScrollMode then visibility:SetScrollMode(350)end
   visibility:CreateTitle('Hiding preserves weapon and character lifetime data.')
@@ -171,7 +174,6 @@ end
 function T.Initialize()
  local ldb=LibStub and LibStub:GetLibrary('LibDataBroker-1.1',true);if not ldb then return end
  T.broker=ldb:NewDataObject('TitanApproxDPS',{type='data source',label='Approx DPS',text='Lifetime',icon='Interface\\Icons\\Ability_Warrior_Charge',
- OnEnter=T.Show,OnLeave=T.Hide,OnClick=function(owner,button)if button=='RightButton'then T.Menu(owner)else T.Show(owner)end end,
- OnMouseWheel=function(owner,delta)T.page=math.max(1,T.page-delta);T.Show(owner)end})
+ OnEnter=T.Show,OnLeave=T.Hide,OnClick=function(owner,button)if button=='RightButton'then T.Menu(owner)else T.Show(owner)end end})
  T.Refresh()
 end

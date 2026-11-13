@@ -8,7 +8,7 @@ Analyzes completed native damage-meter sessions. No live DPS display or combat-l
 
 - Stores observed damage, spell summaries and weapon-loadout context after combat, with duplicate-safe replacement of retained session contributions.
 - Preserves 200 recent sessions and folds older retained receipts into historical aggregates. Current weapon reports use a separately resettable report period; character and weapon lifetime histories remain intact.
-- Titan-first reports: hover the panel or minimap launcher for individual weapon-slot headings in saved item rarity colors, per-spell damage and percentage of the selected group's damage, group lifetime and character lifetime. Wheel paging keeps every weapon and spell accessible.
+- Titan-first reports: hover the panel or minimap launcher for individual weapon-slot headings in saved item rarity colors, per-spell damage and percentage of the selected group's damage, group lifetime and character lifetime. The tooltip is a compact summary without paging: each weapon shows its top three spells, and right click > Weapon results lists every spell in a scrollable menu.
 - Right click opens native menus for weapon results, character lifetime totals, combat-mode filters, recording, minimap visibility, export/import and reversible weapon visibility. Hidden groups keep collecting data; Show all weapons restores them without loss.
 - Large report windows remain optional through /tadps window. Current comparison uses the first two loadout rows; arbitrary profile selection remains planned.
 - Keeps PvE, PvP, mixed and unknown data separate. This initial adapter cannot prove complete recipient classification, so captured sessions are deliberately unknown. Pure-mode rankings are unavailable until a validated classifier exists.

@@ -1,5 +1,5 @@
 local ns={}
-for _,f in ipairs({'Namespace','Capabilities','Settings','Storage','SpellRules','WeaponAttribution','Records','Categories','Stats','Reports','Compare','TooltipHook'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
+for _,f in ipairs({'Namespace','Capabilities','Settings','Style','Storage','SpellRules','WeaponAttribution','Records','Categories','Stats','Reports','Compare','TooltipHook'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
 local EQUIPPED='|cff1eff00|Hitem:20:0|h[Old Bow]|h|r'
 local HOVER='|cff0070dd|Hitem:99:0|h[New Bow]|h|r'
 local stats={['item:20:0']={ITEM_MOD_DAMAGE_PER_SECOND_SHORT=10,ITEM_MOD_AGILITY_SHORT=2},['|cff0070dd|Hitem:99:0|h[New Bow]|h|r']={ITEM_MOD_DAMAGE_PER_SECOND_SHORT=15,ITEM_MOD_AGILITY_SHORT=5,ITEM_MOD_STAMINA_SHORT=3}}

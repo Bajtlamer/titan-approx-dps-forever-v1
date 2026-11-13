@@ -47,20 +47,6 @@ function R.Build(store,mode,api,includeHidden)
  table.sort(out.groups,function(a,b)if a.damage==b.damage then return a.profile<b.profile end;return a.damage>b.damage end)
  return out
 end
-function R.Pages(report,limit)
- limit=limit or 16;local pages={{groups={}}};local used=0
- for _,g in ipairs(report.groups)do
-  local first=1
-  repeat
-   if used+5>=limit then pages[#pages+1]={groups={}};used=0 end
-   local room=math.max(1,limit-used-5);local part={group=g,spells={},continued=first>1}
-   for i=first,math.min(#g.spells,first+room-1)do part.spells[#part.spells+1]=g.spells[i]end
-   pages[#pages].groups[#pages[#pages].groups+1]=part;used=used+5+#part.spells;first=first+#part.spells
-   if first<=#g.spells then pages[#pages+1]={groups={}};used=0 end
-  until first>#g.spells
- end
- return pages
-end
 function R.WeaponLifetime(store)
  local c=store:Character();local totals={}
  for _,row in pairs(c and c.rows or {})do for id,part in pairs(ns.WeaponAttribution.Split(row,c,_G))do if part.slot then totals[id]=(totals[id] or 0)+part.damage end end end

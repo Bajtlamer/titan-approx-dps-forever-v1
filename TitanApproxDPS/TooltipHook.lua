@@ -2,13 +2,14 @@ local _,ns=...
 -- Adds a rough comparison to weapon item tooltips. Outside combat only.
 local H={}
 ns.TooltipHook=H
-local GOOD,BAD,HINT,GOLD='7FD694','FF6B6B','B8B8B8','FFD76A'
-local function color(text,hex)return '|cff'..hex..text..'|r' end
+local S=ns.Style
+local colors=S.colors
+local function color(text,hex)return S.Color(text,hex)end
 local function signed(value,fmt)
  local text=string.format(fmt or '%.1f',math.abs(value))
  return (value>=0 and '+' or '-')..text
 end
-local function tone(value)return value>=0 and GOOD or BAD end
+local function tone(value)return value>=0 and colors.good or colors.bad end
 local function itemID(link)return tonumber(tostring(link):match('item:(%d+)'))end
 
 -- Returns the Compare result and the equipped group, or nil when nothing applies.
@@ -40,24 +41,36 @@ function H.Render(tip,link,api,store)
  api=api or _G
  local ok,result,group=pcall(H.Evaluate,link,api,store or ns.store)
  if not ok or not result then return false end
- tip:AddLine(' ')
- tip:AddLine('Titan Approx DPS: rough comparison with equipped',1,.82,.2)
+ if tip.HookScript and not tip.tadpsHooked then tip:HookScript('OnTooltipCleared',S.Restore);tip.tadpsHooked=true end
+ local function row(label,value,labelColor)
+  local r,g,b=S.rgb(labelColor or colors.label)
+  tip:AddDoubleLine(label,value,r,g,b,1,1,1);S.Style(tip,'body','body',true)
+ end
+ local function hint(text)
+  local r,g,b=S.rgb(colors.hint);tip:AddLine(text,r,g,b,true);S.Style(tip,'hint','hint',true)
+ end
+ tip:AddLine(' ');S.Style(tip,'hint','hint',true)
+ local tr,tg,tb=S.rgb(colors.title)
+ tip:AddLine('Titan Approx DPS: rough comparison with equipped',tr,tg,tb);S.Style(tip,'body','body',true)
  local d=result.weaponDps
  if d.new and d.old then
-  tip:AddDoubleLine('Weapon DPS (this / equipped)',string.format('%.1f / %.1f',d.new,d.old),1,1,1,1,1,1)
-  if d.percent then tip:AddDoubleLine('Weapon DPS change',color(signed(d.percent)..'%',tone(d.percent)),1,1,1,1,1,1)end
+  row('Weapon DPS (this / equipped)',color(string.format('%.1f',d.new),colors.dps)..color(' / ',colors.separator)..color(string.format('%.1f',d.old),colors.dps))
+  if d.percent then
+   local r,g,b=S.rgb(colors.title)
+   tip:AddDoubleLine('Weapon DPS change',color(signed(d.percent)..'%',tone(d.percent)),r,g,b,1,1,1);S.Style(tip,'body','primary',true)
+  end
  end
  if result.rough then
   local r=result.rough
-  tip:AddDoubleLine('Rough effect on your auto-attack damage',color(signed(r.percent)..'%',tone(r.percent)),1,1,1,1,1,1)
-  tip:AddDoubleLine('Your typical DPS ('..r.fights..(r.fights==1 and ' fight' or ' fights')..', '..r.confidence..')',string.format('%.1f > about %.1f',group.stats.period.typical,r.typical),.8,.8,.8,1,1,1)
-  tip:AddLine(string.format('Auto-attacks were %.0f%% of your recorded damage with the equipped weapon. Abilities and stat scaling are not included.',r.autoShare*100),.72,.72,.72,true)
+  row('Rough effect on your auto-attack damage',color(signed(r.percent)..'%',tone(r.percent)),colors.title)
+  row('Your typical DPS ('..r.fights..(r.fights==1 and ' fight' or ' fights')..', '..color(r.confidence,colors.confidence[r.confidence] or colors.unavailable)..')',color(string.format('%.1f',group.stats.period.typical),colors.dps)..color(' > about ',colors.separator)..color(string.format('%.1f',r.typical),colors.dps))
+  hint(string.format('Auto-attacks were %.0f%% of your recorded damage with the equipped weapon. Abilities and stat scaling are not included.',r.autoShare*100))
  else
-  tip:AddLine('No fight data for the equipped weapon yet, so only the item values are compared.',.72,.72,.72,true)
+  hint('No fight data for the equipped weapon yet, so only the item values are compared.')
  end
  for i,s in ipairs(result.stats)do
   if i>8 then break end
-  tip:AddDoubleLine(ns.Compare.Label(s.key,api),color(signed(s.delta,'%d'),tone(s.delta)),.8,.8,.8,1,1,1)
+  row(ns.Compare.Label(s.key,api),color(signed(s.delta,'%d'),tone(s.delta)))
  end
  return true
 end
