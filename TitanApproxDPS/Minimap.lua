@@ -14,7 +14,7 @@ function M.Initialize()
  if b.CreateMaskTexture then local mask=b:CreateMaskTexture();if mask then mask:SetTexture('Interface\\CHARACTERFRAME\\TempPortraitAlphaMask');mask:SetAllPoints(icon);icon:AddMaskTexture(mask)end end
  local border=b:CreateTexture(nil,'OVERLAY');border:SetTexture('Interface\\Minimap\\MiniMap-TrackingBorder');border:SetSize(54,54);border:SetPoint('TOPLEFT')
  b:RegisterForClicks('LeftButtonUp','RightButtonUp');b:RegisterForDrag('LeftButton')
- b:SetScript('OnClick',function(_,button)if button=='RightButton'then ns.Titan.Menu(b)else ns.Titan.Show(b)end end)
+ b:SetScript('OnClick',function(_,button)if button=='RightButton'then ns.Titan.Menu(b)else ns.Titan.Hide();ns.Window.Toggle()end end)
  b:SetScript('OnEnter',function()ns.Titan.Show(b)end);b:SetScript('OnLeave',ns.Titan.Hide)
  b:SetScript('OnDragStart',function()b:SetScript('OnUpdate',function()local x,y=GetCursorPosition();local scale=Minimap:GetEffectiveScale();local cx,cy=Minimap:GetCenter();s.angle=(math.deg(math.atan2(y/scale-cy,x/scale-cx))+360)%360;M.Position()end)end)
  b:SetScript('OnDragStop',function()b:SetScript('OnUpdate',nil);M.Position()end);M.Position();b:SetShown(s.minimap)

@@ -40,7 +40,13 @@ local function ensureFonts()
  local primary=_G.CreateFont(levels.primary);primary:SetFont(path,18,flags or '')
  local hint=_G.CreateFont(levels.hint);hint:SetFont(path,10,flags or '')
 end
-function S.Font(level)ensureFonts();return levels[level] or levels.body end
+local fallbackFonts={primary='GameFontNormalLarge',hint='GameFontNormalSmall'}
+function S.Font(level)
+ ensureFonts()
+ -- If the custom fonts could not be created, use stock Blizzard fonts rather than a missing name.
+ if type(_G.CreateFont)=='function' and not _G[levels.primary] and fallbackFonts[level] then return fallbackFonts[level]end
+ return levels[level] or levels.body
+end
 
 -- Apply a text level to the last added tooltip line. Safe on any tooltip stub.
 function S.Style(tip,level,rightLevel,track)
@@ -60,4 +66,14 @@ function S.Restore(tip)
   end
  end
  tip.tadpsStyled=nil
+end
+
+-- Color for a view-model cell kind: a Style color name, kind:<category> or confidence:<level>.
+function S.CellColor(kind)
+ if not kind or kind=='label' then return S.colors.label end
+ local group,name=tostring(kind):match('^(%w+):(%w+)$')
+ if group=='kind' then return S.colors.kind[name] or S.colors.kind.other end
+ if group=='confidence' then return S.colors.confidence[name] or S.colors.unavailable end
+ local color=S.colors[kind]
+ return type(color)=='string' and color or S.colors.label
 end

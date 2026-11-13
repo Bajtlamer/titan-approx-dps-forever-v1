@@ -10,10 +10,7 @@ end
 local function pair(left,leftColor,right,rightColor)
  return metric(left,leftColor)..colored(' / ',colors.separator)..metric(right,rightColor)
 end
-local function spellName(id)
- local ok,name=pcall(function()return C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)end)
- return ok and ns.Capabilities.IsPublic(name) and type(name)=='string' and name or ('Spell '..id)
-end
+local spellName=ns.SpellName
 local function scopeName(mode)return ({all='All fights',pve='PvE',pvp='PvP',mixed='Mixed PvE/PvP',unknown='Combat type not verified'})[mode] or mode end
 local function separator(tip)
  tip:AddLine(' ');S.Style(tip,'hint')
@@ -174,6 +171,6 @@ end
 function T.Initialize()
  local ldb=LibStub and LibStub:GetLibrary('LibDataBroker-1.1',true);if not ldb then return end
  T.broker=ldb:NewDataObject('TitanApproxDPS',{type='data source',label='Approx DPS',text='Lifetime',icon='Interface\\Icons\\Ability_Warrior_Charge',
- OnEnter=T.Show,OnLeave=T.Hide,OnClick=function(owner,button)if button=='RightButton'then T.Menu(owner)else T.Show(owner)end end})
+ OnEnter=T.Show,OnLeave=T.Hide,OnClick=function(owner,button)if button=='RightButton'then T.Menu(owner)else T.Hide();ns.Window.Toggle()end end})
  T.Refresh()
 end

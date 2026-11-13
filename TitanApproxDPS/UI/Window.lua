@@ -1,67 +1,154 @@
 local _,ns=...
-local W={tab='Overview',page=1};ns.Window=W
-local tabs={'Overview','Weapons','Spells','Pets','Compare','History','Data'}
-local function button(parent,label,x,y,width,fn)
- local b=CreateFrame('Button',nil,parent,'UIPanelButtonTemplate');b:SetSize(width,24);b:SetPoint('TOPLEFT',x,y);b:SetText(label);b:SetScript('OnClick',fn);return b
+-- Results window: header with the key values, tabs, filters (drop-downs and search),
+-- and scrollable lists. All content comes from ns.ViewModel; this file only renders.
+local W={tab='Overview'};ns.Window=W
+local VM=ns.ViewModel
+local S=ns.Style
+local Wd=ns.Widgets
+local FRAME_W,FRAME_H=1000,700
+local FOOTER=56
+local WITH_DETAIL={Overview=true,Weapons=true}
+W.query=VM.NewQuery()
+W.lists={}
+
+local function environment()
+ local recorder=ns.recorder or {}
+ return {recording=not recorder.paused,meter=ns.capabilities and ns.capabilities.damage,spells=ns.capabilities and ns.capabilities.spells,
+  gap=recorder.gap,controls='Scrollable lists with scroll bars, search box and drop-down menus (core frame controls)'}
 end
-local function amount(v)return v and string.format('%.1f',v) or 'Unavailable' end
-local function damageAmount(v)return ns.DamageNumber(v) end
+
+local function number(v)return v and ns.DamageNumber(v) or 'Unavailable'end
+
+local function setQuery(field,value)
+ W.query[field]=value
+ if field=='scope' and ns.store then ns.store.saved.settings.mode=value;if ns.Titan then ns.Titan.Refresh()end end
+ if field=='tab' then W.query.sortKey=nil;W.query.sortDesc=true;W.query.selected=nil end
+ W.Refresh()
+end
+
+local function options(values,labelFor)
+ local out={};for _,v in ipairs(values)do out[#out+1]={key=v,label=labelFor(v)}end;return out
+end
+
+local function statBlock(frame,x,label)
+ local caption=Wd.Text(frame,'hint',S.colors.hint);caption:SetPoint('TOPLEFT',frame,'TOPLEFT',x,-30);caption:SetText(label)
+ local value=Wd.Text(frame,'primary');value:SetPoint('TOPLEFT',frame,'TOPLEFT',x,-44)
+ return value
+end
+
+local function build()
+ local f=CreateFrame('Frame','TitanApproxDPSWindow',UIParent,'BasicFrameTemplateWithInset');W.frame=f
+ f:SetSize(FRAME_W,FRAME_H);f:SetPoint('CENTER');f:SetClampedToScreen(true);f:SetMovable(true);f:EnableMouse(true)
+ f:RegisterForDrag('LeftButton');f:SetScript('OnDragStart',f.StartMoving);f:SetScript('OnDragStop',f.StopMovingOrSizing)
+ f.TitleText:SetText('Titan Approx DPS '..ns.version)
+ if UISpecialFrames then table.insert(UISpecialFrames,'TitanApproxDPSWindow')end
+
+ W.lifetime=statBlock(f,16,'Character lifetime damage (protected)')
+ W.bestFight=statBlock(f,300,'Best fight (protected)')
+ W.bestDps=statBlock(f,520,'Best DPS in one fight (protected)')
+ W.character=Wd.Text(f,'body',S.colors.label,'RIGHT');W.character:SetPoint('TOPRIGHT',f,'TOPRIGHT',-16,-60);W.character:SetWidth(300)
+ W.exportButton=Wd.Button(f,'Export',80,22,function()ns.TransferView.Show(false)end);W.exportButton:SetPoint('TOPRIGHT',f,'TOPRIGHT',-104,-30)
+ W.importButton=Wd.Button(f,'Import',80,22,function()ns.TransferView.Show(true)end);W.importButton:SetPoint('TOPRIGHT',f,'TOPRIGHT',-16,-30)
+
+ W.tabButtons={}
+ for i,name in ipairs(VM.Tabs)do
+  local tab=name
+  local b=Wd.Button(f,name,112,24,function()W.tab=tab;setQuery('tab',tab)end)
+  b:SetPoint('TOPLEFT',f,'TOPLEFT',16+(i-1)*116,-84);W.tabButtons[name]=b
+ end
+
+ W.dropdowns={}
+ W.dropdowns.scope=Wd.Dropdown(f,200,'Scope',function()return options(VM.Scopes,function(v)return VM.ScopeLabels[v]end),W.query.scope end,function(v)setQuery('scope',v)end)
+ W.dropdowns.category=Wd.Dropdown(f,190,'Category',function()return options(VM.CategoryChoices,VM.CategoryLabel),W.query.category end,function(v)setQuery('category',v)end)
+ W.dropdowns.period=Wd.Dropdown(f,170,'Period',function()return options(VM.Periods,function(v)return VM.PeriodLabels[v]end),W.query.period end,function(v)setQuery('period',v)end)
+ W.dropdowns.scope.button:SetPoint('TOPLEFT',f,'TOPLEFT',16,-116)
+ W.dropdowns.category.button:SetPoint('TOPLEFT',f,'TOPLEFT',224,-116)
+ W.dropdowns.period.button:SetPoint('TOPLEFT',f,'TOPLEFT',422,-116)
+ W.search=Wd.SearchBox(f,230,'Search weapons, spells, targets...',function(text)W.query.search=text;W.Refresh()end)
+ W.search:SetPoint('TOPLEFT',f,'TOPLEFT',606,-117)
+ W.hiddenButton=Wd.Button(f,'Hidden: off',110,24,function()setQuery('showHidden',not W.query.showHidden)end)
+ W.hiddenButton:SetPoint('TOPLEFT',f,'TOPLEFT',850,-116)
+
+ local function compareOptions()return W.result and W.result.compare and W.result.compare.options or {}end
+ W.dropdowns.compareA=Wd.Dropdown(f,440,'First',function()return compareOptions(),W.result and W.result.compare and W.result.compare.a end,function(v)setQuery('compareA',v)end)
+ W.dropdowns.compareB=Wd.Dropdown(f,440,'Second',function()return compareOptions(),W.result and W.result.compare and W.result.compare.b end,function(v)setQuery('compareB',v)end)
+ W.dropdowns.compareA.button:SetPoint('TOPLEFT',f,'TOPLEFT',16,-148)
+ W.dropdowns.compareB.button:SetPoint('TOPLEFT',f,'TOPLEFT',464,-148)
+
+ W.lists.main=Wd.List(f,{rowHeight=22})
+ W.lists.detail=Wd.List(f,{rowHeight=20})
+ W.detailTitle=Wd.Text(f,'title',S.colors.title)
+ W.lists.main.onSelect=function(key)if WITH_DETAIL[W.query.tab]then W.query.selected=key;W.Refresh()end end
+ W.lists.main.onSort=function(key)
+  local q=W.query
+  if q.sortKey==key then q.sortDesc=not q.sortDesc
+  else
+   q.sortKey=key
+   local desc=true;for _,col in ipairs(W.result.columns)do if col.key==key and col.align=='left' then desc=false end end
+   q.sortDesc=desc
+  end
+  W.Refresh()
+ end
+ W.hint=Wd.Text(f,'hint',S.colors.hint);W.hint:SetPoint('BOTTOMLEFT',f,'BOTTOMLEFT',16,14);W.hint:SetWidth(FRAME_W-32);W.hint:SetWordWrap(true);W.hint:SetHeight(34);W.hint:SetJustifyV('TOP')
+end
+
+local function layout(result)
+ local compare=W.query.tab=='Compare'
+ for _,name in ipairs({'compareA','compareB'})do if compare then W.dropdowns[name].button:Show()else W.dropdowns[name].button:Hide()end end
+ local top=compare and -180 or -150
+ local bottom=-(FRAME_H-FOOTER)
+ local width=FRAME_W-32
+ if result.detail then
+  local mainHeight=250
+  W.lists.main:SetBox(16,top,width,mainHeight)
+  W.detailTitle:ClearAllPoints();W.detailTitle:SetPoint('TOPLEFT',W.frame,'TOPLEFT',20,top-mainHeight-6);W.detailTitle:Show()
+  local detailTop=top-mainHeight-26
+  W.lists.detail.frame:Show();W.lists.detail:SetBox(16,detailTop,width,bottom*-1+detailTop)
+ else
+  W.lists.main:SetBox(16,top,width,-bottom+top)
+  W.lists.detail.frame:Hide();W.detailTitle:Hide()
+ end
+end
+
 function W.Refresh()
  if not W.frame or not W.frame:IsShown() or not ns.store then return end
- local c=ns.store:Character();if not c then W.text:SetText('Unsupported future database schema. Recording disabled.');return end
- local mode=ns.store.saved.settings.mode
- local lines={'Mode: '..mode..' | Completed fights only','Lifetime recorded damage: '..damageAmount(c.totalDamage),''}
- local rows=ns.Comparisons.Rows(ns.store,{combatMode=mode})
- if W.tab=='Pets' then lines[#lines+1]='Pet ownership and owner inclusion require live verification. Separate pet totals are unavailable.'
- elseif W.tab=='Data' then
-  lines[#lines+1]='Recording: '..(ns.recorder.paused and 'Paused' or 'Enabled')
-  lines[#lines+1]='Native meter: '..tostring(ns.capabilities.damage)..' | Spell API: '..tostring(ns.capabilities.spells)
-  lines[#lines+1]='Crits, hit maxima and miss counts: unavailable from native summaries.'
-  lines[#lines+1]='PvE/PvP classification: unknown until complete recipient evidence is validated.'
-  lines[#lines+1]='Capture note: '..(ns.recorder.gap or 'No reported gap')
-  lines[#lines+1]='Commands: /tadps pause, resume, export, import, method NAME'
- elseif W.tab=='History' then
-  for i=#c.history,math.max(1,#c.history-19),-1 do local r=c.receipts[c.history[i]];if r then lines[#lines+1]=r.receiptID..' | '..r.mode..' | '..damageAmount(r.damage)..' damage | '..amount(r.seconds)..' seconds' end end
- elseif W.tab=='Spells' then
-  local sums={};local timed={};local seconds=0
-  for _,r in ipairs(rows)do seconds=seconds+r.seconds;for id,s in pairs(r.spells)do sums[id]=(sums[id] or 0)+s.damage;timed[id]=(timed[id] or 0)+(s.timedDamage or 0) end end
-  local ids={};for id in pairs(sums)do ids[#ids+1]=id end;table.sort(ids,function(a,b)return sums[a]>sums[b]end)
-  for _,id in ipairs(ids)do local name=C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id) or ('Spell '..id);lines[#lines+1]=name..' | damage '..damageAmount(sums[id])..' | per combat second '..amount(seconds>0 and timed[id]/seconds or nil)end
- elseif W.tab=='Compare' then
-  lines[#lines+1]='Equipment-context comparison of the first two recorded sets:'
-  if #rows>=2 then
-   for i=1,2 do local r=rows[i];lines[#lines+1]=(c.profiles[r.profile] or r.profile)..' | '..amount(r.dps)..' damage/combat second | '..r.sessions..' sessions' end
-   lines[#lines+1]='Observed difference: '..amount(rows[1].dps and rows[2].dps and rows[1].dps-rows[2].dps)
-  else lines[#lines+1]='Record at least two loadouts for comparison.' end
-  lines[#lines+1]='Pure-mode ranking requires 10 complete sessions, 120 seconds and verified mode.'
- else
-  local groups=ns.Reports.Build(ns.store,mode).groups
-  local start=(W.page-1)*8+1
-  for i=start,math.min(#groups,start+7)do local g=groups[i]
-   lines[#lines+1]=g.name..'\nClassified lifetime '..damageAmount(g.lifetimeDamage)..' | selected damage '..damageAmount(g.damage)..' | combat DPS '..amount(g.dps)
-   lines[#lines+1]='Auto-attacks '..damageAmount(g.autoDamage)..' | abilities '..damageAmount(g.abilityDamage)
-   for _,spell in ipairs(g.spells)do lines[#lines+1]='Spell '..spell.spellID..': '..damageAmount(spell.damage)..' ('..(spell.percent and string.format('%.1f%%',spell.percent) or 'Unavailable')..')'end
-   lines[#lines+1]=''
-  end
-  if #groups==0 then lines[#lines+1]='No visible classified results in this mode.'end
-  lines[#lines+1]='Page '..W.page
+ local c=ns.store:Character()
+ if not c then return end
+ local result=VM.Build(ns.store,W.query,environment());W.result=result
+ local q=W.query
+ W.lifetime:SetText(S.Color(number(result.header.lifetime),S.colors.lifetime))
+ W.bestFight:SetText(S.Color(number(result.header.bestFight),result.header.bestFight and S.colors.record or S.colors.unavailable))
+ W.bestDps:SetText(S.Color(result.header.bestDps and string.format('%.1f',result.header.bestDps) or 'Unavailable',result.header.bestDps and S.colors.record or S.colors.unavailable))
+ W.character:SetText((result.header.name or 'Recorded character')..(result.header.class and (' - '..result.header.class:sub(1,1)..result.header.class:sub(2):lower()) or ''))
+ for name,b in pairs(W.tabButtons)do if name==q.tab then b:Disable()else b:Enable()end end
+ W.dropdowns.scope:SetValue(VM.ScopeLabels[q.scope])
+ W.dropdowns.category:SetValue(VM.CategoryLabel(q.category))
+ W.dropdowns.period:SetValue(VM.PeriodLabels[q.period])
+ W.hiddenButton:SetText('Hidden: '..(q.showHidden and 'shown' or 'off'))
+ if result.compare then
+  local function label(key)for _,o in ipairs(result.compare.options)do if o.key==key then return o.label end end;return 'None'end
+  W.dropdowns.compareA:SetValue(label(result.compare.a));W.dropdowns.compareB:SetValue(label(result.compare.b))
  end
- W.text:SetText(table.concat(lines,'\n'))
+ layout(result)
+ W.lists.main:SetData(result.columns,result.rows,result.selected,result.sortKey,result.sortDesc,result.empty)
+ if result.detail then
+  W.detailTitle:SetText('Spells and abilities: '..result.detail.title)
+  W.lists.detail:SetData(result.detail.columns,result.detail.rows,nil,nil,nil,'No spell breakdown is available for this group.')
+ end
+ W.hint:SetText(result.hint)
 end
+
+local known={}
+for _,name in ipairs(VM.Tabs)do known[name]=true end
 function W.Show(tab)
- if not W.frame then
-  local f=CreateFrame('Frame','TitanApproxDPSWindow',UIParent,'BasicFrameTemplateWithInset');W.frame=f
-  f:SetSize(940,650);f:SetPoint('CENTER');f:SetClampedToScreen(true);f:SetMovable(true);f:EnableMouse(true);f:RegisterForDrag('LeftButton');f:SetScript('OnDragStart',f.StartMoving);f:SetScript('OnDragStop',f.StopMovingOrSizing);f.TitleText:SetText('Titan Approx DPS '..ns.version)
-  if UISpecialFrames then table.insert(UISpecialFrames,'TitanApproxDPSWindow')end
-  for i,name in ipairs(tabs)do button(f,name,12+(i-1)*130,-35,124,function()W.tab=name;W.page=1;W.Refresh()end)end
-  for i,mode in ipairs({'pve','pvp','mixed','unknown'})do button(f,mode,12+(i-1)*110,-68,104,function()ns.store.saved.settings.mode=mode;W.page=1;W.Refresh()end)end
-  button(f,'Previous',470,-68,100,function()W.page=math.max(1,W.page-1);W.Refresh()end)
-  button(f,'Next',580,-68,100,function()W.page=W.page+1;W.Refresh()end)
-  button(f,'Export',690,-68,100,function()ns.TransferView.Show(false)end)
-  button(f,'Import',800,-68,100,function()ns.TransferView.Show(true)end)
-  local scroll=CreateFrame('ScrollFrame',nil,f,'UIPanelScrollFrameTemplate');scroll:SetPoint('TOPLEFT',16,-110);scroll:SetSize(880,510)
-  local child=CreateFrame('Frame',nil,scroll);child:SetSize(860,1800);scroll:SetScrollChild(child)
-  W.text=child:CreateFontString(nil,'OVERLAY','GameFontHighlight');W.text:SetPoint('TOPLEFT');W.text:SetWidth(850);W.text:SetJustifyH('LEFT');W.text:SetSpacing(5)
- end
- W.tab=tab or W.tab;W.frame:Show();W.Refresh()
+ if not ns.store then return end
+ if not W.frame then build()end
+ local target=known[tab] and tab or (tab==nil and W.query.tab) or 'Overview'
+ W.tab=target;W.query.tab=target
+ if not W.shown_before then W.query.scope=ns.store.saved.settings.mode or 'all';W.shown_before=true end
+ W.frame:Show();W.Refresh()
+end
+function W.Toggle(tab)
+ if W.frame and W.frame:IsShown() and (tab==nil or W.query.tab==tab) then W.frame:Hide();return end
+ W.Show(tab)
 end

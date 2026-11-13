@@ -4,7 +4,7 @@ function R.SetHidden(store,profile,hidden)
  local c=store:Character();if not c then return end
  c.reportHidden=c.reportHidden or {};c.reportHidden[profile]=hidden and true or nil;c.revision=c.revision+1
 end
-function R.Build(store,mode,api,includeHidden)
+function R.Build(store,mode,api,includeHidden,useLifetime)
  api=api or _G
  local c=store:Character();local out={groups={},characterDamage=c and c.totalDamage or 0,mode=mode,preservedDamage=c and c.preservedLifetimeDamage or 0}
  if not c then return out end
@@ -12,7 +12,7 @@ function R.Build(store,mode,api,includeHidden)
  local groups={};local parsed={}
  local lifetime={}
  for _,r in pairs(c.rows or {})do for id,part in pairs(ns.WeaponAttribution.Split(r,c,api))do lifetime[id]=(lifetime[id] or 0)+part.damage end end
- for key,r in pairs(c.reportRows or c.rows or {})do
+ for key,r in pairs(useLifetime and c.rows or c.reportRows or c.rows or {})do
   local parts,slots=ns.WeaponAttribution.Split(r,c,api);parsed[key]={parts=parts,slots=slots,row=r}
   for id,p in pairs(parts)do
    local g=groups[id]

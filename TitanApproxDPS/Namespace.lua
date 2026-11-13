@@ -1,5 +1,5 @@
 local _,ns=...
-ns.version='0.1.12-alpha'
+ns.version='0.1.13-alpha'
 function ns.Copy(t)
  if type(t)~='table' then return t end
  local r={};for k,v in pairs(t)do r[k]=ns.Copy(v)end;return r
@@ -11,6 +11,10 @@ function ns.DamageNumber(v)
  digits=digits:gsub('(%d%d%d)','%1.')
  digits=digits:reverse():gsub('^%.','')
  return digits
+end
+function ns.SpellName(id)
+ local ok,name=pcall(function()return C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)end)
+ return ok and ns.Capabilities.IsPublic(name) and type(name)=='string' and name or ('Spell '..id)
 end
 function ns.Available(v)return {state='available',value=v}end
 function ns.Missing(reason)return {state='unavailable',reason=reason}end
