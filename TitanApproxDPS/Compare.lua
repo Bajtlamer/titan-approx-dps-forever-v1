@@ -17,6 +17,7 @@ end
 local function dps(stats)
  for _,key in ipairs(DPS_KEYS)do if ns.Number(stats[key]) then return stats[key],key end end
 end
+C.WeaponDps=function(stats)return (dps(stats))end
 local fallback={ITEM_MOD_STRENGTH_SHORT='Strength',ITEM_MOD_AGILITY_SHORT='Agility',ITEM_MOD_STAMINA_SHORT='Stamina',ITEM_MOD_INTELLECT_SHORT='Intellect',ITEM_MOD_SPIRIT_SHORT='Spirit',ITEM_MOD_ATTACK_POWER_SHORT='Attack Power',ITEM_MOD_SPELL_POWER_SHORT='Spell Power'}
 function C.Label(key,api)
  api=api or _G

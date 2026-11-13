@@ -297,6 +297,7 @@ local function buildData(store,query,env)
   {'Protected best fight',c.records and c.records.character and c.records.character.fightDamage and whole(c.records.character.fightDamage.value) or 'Unavailable','record'},
   {'Stored fights',tostring(#c.history),'label'},
   {'Fights with a build snapshot',withBuild..' of '..#c.history..' stored fights',withBuild>0 and 'label' or 'unavailable'},
+  {'Calibrated item estimates','Need 20 fights with a build snapshot for the equipped weapon. Spell estimates also need spell power to vary across those fights.','hint'},
   {'Latest build snapshot',latest and describeBuild(latest) or 'None yet: stats are read when a fight starts.',latest and 'label' or 'unavailable'},
   {'Critical hits, single hit maxima, misses','Unavailable: the native damage meter provides fight summaries only.','unavailable'},
   {'PvE / PvP classification','Not verified until complete recipient evidence is available.','unavailable'},

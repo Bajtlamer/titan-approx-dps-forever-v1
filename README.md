@@ -80,3 +80,7 @@ The shared registry now covers all nine Forever classes with 33 ability families
 See [the exact inventory and evidence](ref-class-weapon-rules.md) for supported ranks and limitations. This is not exhaustive ability coverage: unlisted IDs, particularly lower Warrior/Rogue ranks, remain unresolved. Rules never use an equipped staff as proof that a caster spell came from that weapon. Existing records are reinterpreted without an automatic reset or lifetime deletion.
 
 This release adds SpellRules.lua to the manifest. Fully restart the WoW client after installation so the new file list is loaded. No new data collection during combat is introduced.
+
+## Item tooltip estimates (0.1.16-alpha)
+
+Hovering a weapon compares it with the equipped weapon of the same slot. With at least 20 fights that carry a build snapshot the tooltip shows an estimated change calibrated on your own data: auto-attack damage is modelled as an efficiency factor times (weapon DPS + attack power / 14), with the factor fitted from your fights, and spell damage as a straight-line fit of your spell group DPS on spell power. Below 20 fights it shows the rough comparison and says how many fights are missing. It is an estimate, not a measurement: abilities, procs and enchants are not modelled, and every line states the number of fights and a confidence level.

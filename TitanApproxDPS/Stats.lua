@@ -57,7 +57,7 @@ local function samples(c,receipt)
   local ok,parts=pcall(ns.WeaponAttribution.Split,ns.Storage.RowFor(receipt),c,_G)
   if ok then
    for key,p in pairs(parts)do
-    if p.damage>0 then list[#list+1]={key=key,kind=ns.Categories.Of(p),dps=p.damage/seconds,seconds=seconds}end
+    if p.damage>0 then list[#list+1]={key=key,kind=ns.Categories.Of(p),dps=p.damage/seconds,autoDps=(p.autoDamage or 0)/seconds,seconds=seconds}end
    end
   end
  end
@@ -134,4 +134,18 @@ function S.ForGroup(collected,key,mode,scope)
  table.sort(recent,function(a,b)return a.i<b.i end)
  local values={};for i=math.max(1,#recent-RECENT+1),#recent do values[#values+1]=recent[i].dps end
  return S.Summary(merged,values)
+end
+
+-- One entry per retained fight of a group, with the build snapshot of that fight, for the estimator.
+function S.FightSamples(c,key,mode)
+ local out={}
+ for index,id in ipairs(c.order or {})do
+  local receipt=c.receipts[id]
+  if receipt and (not mode or mode=='all' or receipt.mode==mode)then
+   for _,sample in ipairs(samples(c,receipt))do
+    if sample.key==key then out[#out+1]={index=index,dps=sample.dps,autoDps=sample.autoDps,seconds=sample.seconds,build=receipt.build,mode=receipt.mode}end
+   end
+  end
+ end
+ return out
 end

@@ -34,6 +34,11 @@ function H.Evaluate(link,api,store)
  end
  local result=ns.Compare.Compare(newStats,oldStats,group)
  if not result then return nil end
+ local character=store and store.Character and store:Character()
+ if character and ns.Estimator then
+  local ok,estimate=pcall(ns.Estimator.ForItem,character,group,newStats,oldStats)
+  if ok then result.estimate=estimate end
+ end
  return result,group
 end
 
@@ -60,13 +65,35 @@ function H.Render(tip,link,api,store)
    tip:AddDoubleLine('Weapon DPS change',color(signed(d.percent)..'%',tone(d.percent)),r,g,b,1,1,1);S.Style(tip,'body','primary',true)
   end
  end
- if result.rough then
+ local estimate=result.estimate or {}
+ local function percentRow(label,percent)
+  local r,g,b=S.rgb(colors.title)
+  tip:AddDoubleLine(label,color(signed(percent)..'%',tone(percent)),r,g,b,1,1,1);S.Style(tip,'body','primary',true)
+ end
+ if estimate.auto then
+  local a=estimate.auto
+  percentRow('Estimated change, auto-attacks of the equipped weapon',a.percent)
+  row('Calibrated on '..a.fights..' fights, confidence '..color(a.confidence,colors.confidence[a.confidence] or colors.unavailable),
+   color(signed(a.deltaDps)..' DPS',tone(a.deltaDps))..color(' of ',colors.separator)..color(string.format('%.1f',a.groupTypical),colors.dps))
+  hint(string.format('Your fights show auto-attacks reach %.0f%% of weapon DPS plus attack power / 14. Abilities, procs and enchants are not included.',a.k*100))
+ elseif result.rough then
   local r=result.rough
   row('Rough effect on your auto-attack damage',color(signed(r.percent)..'%',tone(r.percent)),colors.title)
   row('Your typical DPS ('..r.fights..(r.fights==1 and ' fight' or ' fights')..', '..color(r.confidence,colors.confidence[r.confidence] or colors.unavailable)..')',color(string.format('%.1f',group.stats.period.typical),colors.dps)..color(' > about ',colors.separator)..color(string.format('%.1f',r.typical),colors.dps))
   hint(string.format('Auto-attacks were %.0f%% of your recorded damage with the equipped weapon. Abilities and stat scaling are not included.',r.autoShare*100))
+  if estimate.autoReason then hint(estimate.autoReason)end
  else
   hint('No fight data for the equipped weapon yet, so only the item values are compared.')
+  if estimate.autoReason then hint(estimate.autoReason)end
+ end
+ if estimate.spell then
+  local sp=estimate.spell
+  percentRow('Estimated change, your spell damage',sp.percent)
+  row('Calibrated on '..sp.fights..' fights, confidence '..color(sp.confidence,colors.confidence[sp.confidence] or colors.unavailable),
+   color(signed(sp.deltaDps)..' DPS',tone(sp.deltaDps))..color(' of ',colors.separator)..color(string.format('%.1f',sp.meanDps),colors.dps))
+  hint(string.format('Straight-line fit of your spell damage on spell power (fit %.2f). Other stats are not included.',sp.r2))
+ elseif estimate.spellReason and not estimate.spellReason:find('no spell power',1,true) then
+  hint(estimate.spellReason)
  end
  for i,s in ipairs(result.stats)do
   if i>8 then break end
