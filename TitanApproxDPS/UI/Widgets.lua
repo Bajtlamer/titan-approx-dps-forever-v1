@@ -20,33 +20,112 @@ function Wd.Text(parent,level,hex,justify)
  return fs
 end
 
--- Drop-down: a button that opens the native context menu with one radio per option.
--- Without MenuUtil it cycles through the options on click.
-function Wd.Dropdown(parent,width,prefix,getOptions,onSelect)
- local dd={prefix=prefix}
- local b=CreateFrame('Button',nil,parent,'UIPanelButtonTemplate');dd.button=b
+-- Drop-down (combo box). Native: DropdownButton with WowStyle1DropdownTemplate, which
+-- shows the selected choice and opens the native menu with one radio per option. If the
+-- client lacks it, a button opens the context menu instead (or cycles without MenuUtil).
+-- options() returns { {key=,label=} }; get() the current key; set(key) applies a choice.
+-- The returned object has frame, native and Sync() to show a value changed from code.
+function Wd.Dropdown(parent,width,prefix,options,get,set)
+ local dd={}
+ local ok,native=pcall(CreateFrame,'DropdownButton',nil,parent,'WowStyle1DropdownTemplate')
+ if ok and native and native.SetupMenu then
+  dd.frame=native;dd.native=true
+  native:SetWidth(width)
+  native:SetupMenu(function(_,root)
+   if root.SetScrollMode then root:SetScrollMode(350)end
+   for _,o in ipairs(options())do
+    local key=o.key
+    root:CreateRadio(o.label,function()return get()==key end,function()set(key)end)
+   end
+  end)
+  function dd:Sync()if native.GenerateMenu then native:GenerateMenu()end end
+  return dd
+ end
+ local b=CreateFrame('Button',nil,parent,'UIPanelButtonTemplate');dd.frame=b;dd.native=false
  b:SetSize(width,24)
- function dd:SetValue(label)self.value=label;b:SetText(prefix..': '..tostring(label))end
+ function dd:Sync()
+  local current=get();local label=''
+  for _,o in ipairs(options())do if o.key==current then label=o.label end end
+  b:SetText(prefix..': '..label)
+ end
  b:SetScript('OnClick',function(self)
-  local options,current=getOptions()
+  local list,current=options(),get()
   if MenuUtil and MenuUtil.CreateContextMenu then
    MenuUtil.CreateContextMenu(self,function(_,root)
     if root.SetScrollMode then root:SetScrollMode(350)end
-    for _,o in ipairs(options)do
-     local key=o.key
-     root:CreateRadio(o.label,function()return key==current end,function()onSelect(key)end)
-    end
+    for _,o in ipairs(list)do local key=o.key;root:CreateRadio(o.label,function()return key==current end,function()set(key);dd:Sync()end)end
    end)
   else
-   local index=0;for i,o in ipairs(options)do if o.key==current then index=i end end
-   local nextOption=options[(index % #options)+1];if nextOption then onSelect(nextOption.key)end
+   local index=0;for i,o in ipairs(list)do if o.key==current then index=i end end
+   local nextOption=list[(index % #list)+1];if nextOption then set(nextOption.key);dd:Sync()end
   end
  end)
  return dd
 end
 
+-- Tabs. Native: classic panel tabs (PanelTabButtonTemplate) hanging below the window,
+-- driven by PanelTemplates_SetNumTabs / PanelTemplates_SetTab. Fallback: buttons along
+-- the top of the window. names is an ordered list; onSelect(name) is called on click.
+function Wd.Tabs(window,names,onSelect,fallbackY)
+ local tabs={buttons={},native=false}
+ local function native()
+  local previous
+  window.Tabs={} -- PanelTemplates finds tab buttons through window.Tabs
+  for index,name in ipairs(names)do
+   local b=CreateFrame('Button',nil,window,'PanelTabButtonTemplate')
+   b:SetID(index);b:SetText(name)
+   if previous then b:SetPoint('LEFT',previous,'RIGHT',-16,0)else b:SetPoint('TOPLEFT',window,'BOTTOMLEFT',15,2)end
+   local target=name
+   b:SetScript('OnClick',function()onSelect(target)end)
+   tabs.buttons[name]=b;window.Tabs[index]=b;tabs.index=tabs.index or {};tabs.index[name]=index
+   previous=b
+  end
+  PanelTemplates_SetNumTabs(window,#names)
+  PanelTemplates_SetTab(window,1)
+ end
+ if PanelTemplates_SetNumTabs and PanelTemplates_SetTab and pcall(native)then
+  tabs.native=true
+  function tabs:Select(name)PanelTemplates_SetTab(window,self.index[name] or 1)end
+  return tabs
+ end
+ for _,b in pairs(tabs.buttons)do b:Hide()end
+ tabs.buttons={}
+ for i,name in ipairs(names)do
+  local target=name
+  local b=Wd.Button(window,name,112,24,function()onSelect(target)end)
+  b:SetPoint('TOPLEFT',window,'TOPLEFT',16+(i-1)*116,fallbackY or -84);tabs.buttons[name]=b
+ end
+ function tabs:Select(name)for n,b in pairs(self.buttons)do if n==name then b:Disable()else b:Enable()end end end
+ return tabs
+end
+
+-- Check box. Native UICheckButtonTemplate with its own label; button fallback.
+function Wd.CheckBox(parent,label,get,set)
+ local box={}
+ local ok,c=pcall(CreateFrame,'CheckButton',nil,parent,'UICheckButtonTemplate')
+ if ok and c and c.SetChecked then
+  box.frame=c;box.native=true
+  local text=c.Text or c.text
+  if type(text)=='table' and text.SetText then text:SetText(label)end
+  c:SetScript('OnClick',function(self)set(self:GetChecked()and true or false)end)
+  function box:Sync()c:SetChecked(get()and true or false)end
+  return box
+ end
+ local b=Wd.Button(parent,label,130,24,function()set(not get());box:Sync()end);box.frame=b
+ function box:Sync()b:SetText(label..': '..(get()and 'on' or 'off'))end
+ return box
+end
+
 function Wd.SearchBox(parent,width,placeholder,onChange)
- local ok,e=pcall(CreateFrame,'EditBox',nil,parent,'InputBoxTemplate')
+ local ok,e=pcall(CreateFrame,'EditBox',nil,parent,'SearchBoxTemplate')
+ if ok and e and type(e.Instructions)=='table' and e.Instructions.SetText and e.HookScript then
+  e:SetSize(width,22);e:SetAutoFocus(false);e:SetMaxLetters(60)
+  e.Instructions:SetText(placeholder)
+  e:HookScript('OnTextChanged',function(self)onChange(self:GetText())end)
+  e.native=true
+  return e
+ end
+ ok,e=pcall(CreateFrame,'EditBox',nil,parent,'InputBoxTemplate')
  if not ok or not e then e=CreateFrame('EditBox',nil,parent)end
  e:SetSize(width,22);e:SetAutoFocus(false);e:SetFontObject(S.Font('body'));e:SetMaxLetters(60)
  local hint=Wd.Text(e,'hint',S.colors.hint);hint:SetPoint('LEFT',e,'LEFT',6,0);hint:SetText(placeholder)
@@ -67,10 +146,11 @@ function Wd.List(parent,options)
  local bg=f:CreateTexture(nil,'BACKGROUND');bg:SetAllPoints();bg:SetColorTexture(0,0,0,.3)
  list.empty=Wd.Text(f,'hint',S.colors.hint,'CENTER');list.empty:SetPoint('CENTER',f,'CENTER',0,0);list.empty:SetWidth(520);list.empty:Hide()
  local slider=CreateFrame('Slider',nil,f);list.slider=slider
- slider:SetOrientation('VERTICAL');slider:SetWidth(12);slider:SetMinMaxValues(0,0);slider:SetValueStep(1)
+ slider:SetOrientation('VERTICAL');slider:SetWidth(16);slider:SetMinMaxValues(0,0);slider:SetValueStep(1)
  if slider.SetObeyStepOnDrag then slider:SetObeyStepOnDrag(true)end
  local track=slider:CreateTexture(nil,'BACKGROUND');track:SetAllPoints();track:SetColorTexture(1,1,1,.08)
- local thumb=slider:CreateTexture(nil,'OVERLAY');thumb:SetColorTexture(.85,.85,.85,.55);thumb:SetSize(12,36);slider:SetThumbTexture(thumb)
+ slider:SetThumbTexture('Interface\\Buttons\\UI-ScrollBar-Knob')
+ local knob=slider.GetThumbTexture and slider:GetThumbTexture();if knob then knob:SetSize(16,24)end
 
  local function color(cell)
   local text=cell.text
@@ -100,7 +180,7 @@ function Wd.List(parent,options)
  local function ensureRows()
   for i=#list.pool+1,list.visible do
    local row=CreateFrame('Button',nil,f);row:SetHeight(list.rowHeight);row.cells={}
-   row:SetPoint('TOPLEFT',f,'TOPLEFT',0,-HEADER-(i-1)*list.rowHeight);row:SetPoint('RIGHT',f,'RIGHT',-14,0)
+   row:SetPoint('TOPLEFT',f,'TOPLEFT',0,-HEADER-(i-1)*list.rowHeight);row:SetPoint('RIGHT',f,'RIGHT',-18,0)
    row:SetHighlightTexture('Interface\\QuestFrame\\UI-QuestTitleHighlight')
    local sel=row:CreateTexture(nil,'BACKGROUND');sel:SetAllPoints();sel:SetColorTexture(.25,.45,.7,.35);sel:Hide();row.selected=sel
    row:EnableMouseWheel(true);row:SetScript('OnMouseWheel',function(_,delta)list:Scroll(-delta*3)end)

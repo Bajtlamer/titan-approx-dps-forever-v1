@@ -50,30 +50,34 @@ local function build()
  W.exportButton=Wd.Button(f,'Export',80,22,function()ns.TransferView.Show(false)end);W.exportButton:SetPoint('TOPRIGHT',f,'TOPRIGHT',-104,-30)
  W.importButton=Wd.Button(f,'Import',80,22,function()ns.TransferView.Show(true)end);W.importButton:SetPoint('TOPRIGHT',f,'TOPRIGHT',-16,-30)
 
- W.tabButtons={}
- for i,name in ipairs(VM.Tabs)do
-  local tab=name
-  local b=Wd.Button(f,name,112,24,function()W.tab=tab;setQuery('tab',tab)end)
-  b:SetPoint('TOPLEFT',f,'TOPLEFT',16+(i-1)*116,-84);W.tabButtons[name]=b
+ -- Native tabs hang below the window; the fallback puts buttons at the top and moves the content down.
+ W.tabs=Wd.Tabs(f,VM.Tabs,function(name)setQuery('tab',name)end,-84)
+ W.tabButtons=W.tabs.buttons
+ local y0=W.tabs.native and -82 or -114
+ W.filterTop=y0
+ local function caption(x,y,text)
+  local c=Wd.Text(f,'hint',S.colors.hint);c:SetPoint('TOPLEFT',f,'TOPLEFT',x,y);c:SetText(text);return c
  end
+ local function place(frame,x,y)frame:SetPoint('TOPLEFT',f,'TOPLEFT',x,y)end
+ local function optionList(values,labelFor)return function()return options(values,labelFor)end end
 
  W.dropdowns={}
- W.dropdowns.scope=Wd.Dropdown(f,200,'Scope',function()return options(VM.Scopes,function(v)return VM.ScopeLabels[v]end),W.query.scope end,function(v)setQuery('scope',v)end)
- W.dropdowns.category=Wd.Dropdown(f,190,'Category',function()return options(VM.CategoryChoices,VM.CategoryLabel),W.query.category end,function(v)setQuery('category',v)end)
- W.dropdowns.period=Wd.Dropdown(f,170,'Period',function()return options(VM.Periods,function(v)return VM.PeriodLabels[v]end),W.query.period end,function(v)setQuery('period',v)end)
- W.dropdowns.scope.button:SetPoint('TOPLEFT',f,'TOPLEFT',16,-116)
- W.dropdowns.category.button:SetPoint('TOPLEFT',f,'TOPLEFT',224,-116)
- W.dropdowns.period.button:SetPoint('TOPLEFT',f,'TOPLEFT',422,-116)
- W.search=Wd.SearchBox(f,230,'Search weapons, spells, targets...',function(text)W.query.search=text;W.Refresh()end)
- W.search:SetPoint('TOPLEFT',f,'TOPLEFT',606,-117)
- W.hiddenButton=Wd.Button(f,'Hidden: off',110,24,function()setQuery('showHidden',not W.query.showHidden)end)
- W.hiddenButton:SetPoint('TOPLEFT',f,'TOPLEFT',850,-116)
+ caption(20,y0,'Scope');caption(224,y0,'Category');caption(418,y0,'Period');caption(612,y0,'Search')
+ W.dropdowns.scope=Wd.Dropdown(f,190,'Scope',optionList(VM.Scopes,function(v)return VM.ScopeLabels[v]end),function()return W.query.scope end,function(v)setQuery('scope',v)end)
+ W.dropdowns.category=Wd.Dropdown(f,180,'Category',optionList(VM.CategoryChoices,VM.CategoryLabel),function()return W.query.category end,function(v)setQuery('category',v)end)
+ W.dropdowns.period=Wd.Dropdown(f,170,'Period',optionList(VM.Periods,function(v)return VM.PeriodLabels[v]end),function()return W.query.period end,function(v)setQuery('period',v)end)
+ place(W.dropdowns.scope.frame,16,y0-14);place(W.dropdowns.category.frame,220,y0-14);place(W.dropdowns.period.frame,414,y0-14)
+ W.search=Wd.SearchBox(f,230,'Weapons, spells, targets...',function(text)W.query.search=text;W.Refresh()end)
+ place(W.search,616,y0-16)
+ W.hiddenBox=Wd.CheckBox(f,'Hidden weapons',function()return W.query.showHidden end,function(v)setQuery('showHidden',v)end)
+ place(W.hiddenBox.frame,860,y0-13)
 
  local function compareOptions()return W.result and W.result.compare and W.result.compare.options or {}end
- W.dropdowns.compareA=Wd.Dropdown(f,440,'First',function()return compareOptions(),W.result and W.result.compare and W.result.compare.a end,function(v)setQuery('compareA',v)end)
- W.dropdowns.compareB=Wd.Dropdown(f,440,'Second',function()return compareOptions(),W.result and W.result.compare and W.result.compare.b end,function(v)setQuery('compareB',v)end)
- W.dropdowns.compareA.button:SetPoint('TOPLEFT',f,'TOPLEFT',16,-148)
- W.dropdowns.compareB.button:SetPoint('TOPLEFT',f,'TOPLEFT',464,-148)
+ local function compareCurrent(which)return function()return W.result and W.result.compare and W.result.compare[which]end end
+ W.compareCaptions={caption(20,y0-48,'First weapon or group'),caption(468,y0-48,'Second weapon or group')}
+ W.dropdowns.compareA=Wd.Dropdown(f,440,'First',compareOptions,compareCurrent('a'),function(v)setQuery('compareA',v)end)
+ W.dropdowns.compareB=Wd.Dropdown(f,440,'Second',compareOptions,compareCurrent('b'),function(v)setQuery('compareB',v)end)
+ place(W.dropdowns.compareA.frame,16,y0-62);place(W.dropdowns.compareB.frame,464,y0-62)
 
  W.lists.main=Wd.List(f,{rowHeight=22})
  W.lists.detail=Wd.List(f,{rowHeight=20})
@@ -94,8 +98,9 @@ end
 
 local function layout(result)
  local compare=W.query.tab=='Compare'
- for _,name in ipairs({'compareA','compareB'})do if compare then W.dropdowns[name].button:Show()else W.dropdowns[name].button:Hide()end end
- local top=compare and -180 or -150
+ for _,name in ipairs({'compareA','compareB'})do if compare then W.dropdowns[name].frame:Show()else W.dropdowns[name].frame:Hide()end end
+ for _,c in ipairs(W.compareCaptions)do if compare then c:Show()else c:Hide()end end
+ local top=W.filterTop-(compare and 96 or 46)
  local bottom=-(FRAME_H-FOOTER)
  local width=FRAME_W-32
  if result.detail then
@@ -103,7 +108,7 @@ local function layout(result)
   W.lists.main:SetBox(16,top,width,mainHeight)
   W.detailTitle:ClearAllPoints();W.detailTitle:SetPoint('TOPLEFT',W.frame,'TOPLEFT',20,top-mainHeight-6);W.detailTitle:Show()
   local detailTop=top-mainHeight-26
-  W.lists.detail.frame:Show();W.lists.detail:SetBox(16,detailTop,width,bottom*-1+detailTop)
+  W.lists.detail.frame:Show();W.lists.detail:SetBox(16,detailTop,width,-bottom+detailTop)
  else
   W.lists.main:SetBox(16,top,width,-bottom+top)
   W.lists.detail.frame:Hide();W.detailTitle:Hide()
@@ -120,15 +125,9 @@ function W.Refresh()
  W.bestFight:SetText(S.Color(number(result.header.bestFight),result.header.bestFight and S.colors.record or S.colors.unavailable))
  W.bestDps:SetText(S.Color(result.header.bestDps and string.format('%.1f',result.header.bestDps) or 'Unavailable',result.header.bestDps and S.colors.record or S.colors.unavailable))
  W.character:SetText((result.header.name or 'Recorded character')..(result.header.class and (' - '..result.header.class:sub(1,1)..result.header.class:sub(2):lower()) or ''))
- for name,b in pairs(W.tabButtons)do if name==q.tab then b:Disable()else b:Enable()end end
- W.dropdowns.scope:SetValue(VM.ScopeLabels[q.scope])
- W.dropdowns.category:SetValue(VM.CategoryLabel(q.category))
- W.dropdowns.period:SetValue(VM.PeriodLabels[q.period])
- W.hiddenButton:SetText('Hidden: '..(q.showHidden and 'shown' or 'off'))
- if result.compare then
-  local function label(key)for _,o in ipairs(result.compare.options)do if o.key==key then return o.label end end;return 'None'end
-  W.dropdowns.compareA:SetValue(label(result.compare.a));W.dropdowns.compareB:SetValue(label(result.compare.b))
- end
+ W.tabs:Select(q.tab)
+ for _,dd in pairs(W.dropdowns)do dd:Sync()end
+ W.hiddenBox:Sync()
  layout(result)
  W.lists.main:SetData(result.columns,result.rows,result.selected,result.sortKey,result.sortDesc,result.empty)
  if result.detail then
