@@ -35,6 +35,31 @@ assert(text:find('+40.0%',1,true),'80 percent share of +50 percent DPS is +40: '
 assert(not text:find('No fight data',1,true))
 -- the equipped weapon itself and non-weapons get nothing
 assert(not render(EQUIPPED),'equipped item must not be compared with itself')
+-- Random-bonus axes share a base ID but still need their own comparisons/history.
+local oldEquipped=EQUIPPED
+api.GetInventoryItemLink=function(_,slot)return slot==16 and EQUIPPED or nil end
+api.C_Item.GetItemInfoInstant=function()return 4568,nil,nil,'INVTYPE_WEAPON',nil,2,0 end
+EQUIPPED='|cnIQ2:|Hitem:4568::::::::17:1485::1:1:12759:1:28:5240:::::|h[Grunt Axe of Holy Wrath]|h|r'
+local gorilla='|cnIQ2:|Hitem:4568::::::::18:1485::1:1:12760:1:28:5240:::::|h[Grunt Axe of the Gorilla]|h|r'
+local sameVariant='|cnIQ2:|Hitem:4568:::::::123:18:1485::1:1:12759:1:28:5240:::::|h[Grunt Axe of Holy Wrath]|h|r'
+stats[gorilla]={ITEM_MOD_DAMAGE_PER_SECOND_SHORT=10,ITEM_MOD_STRENGTH_SHORT=3,ITEM_MOD_INTELLECT_SHORT=3}
+shown,text=render(gorilla)
+assert(shown and text:find('Strength',1,true) and text:find('+3',1,true),'same-base bonus variant comparison missing: '..text)
+assert(not render(sameVariant),'incidental unique ID and level differences must not compare identical variants')
+local build=ns.Reports.Build
+local right={slot=16,profile='slot:16:4568:0:bonus=12759',damage=100}
+local wrong={slot=16,profile='slot:16:4568:0:bonus=12760',damage=1000}
+ns.Reports.Build=function()return {groups={wrong,right}}end
+local result,group=ns.TooltipHook.Evaluate(gorilla,api,db)
+assert(result and group==right,'comparison used fight history from a different bonus variant')
+-- Classic suffix fields must also distinguish variants.
+local suffix='|cff1eff00|Hitem:4568:0:0:0:0:0:-69:123|h[Grunt Axe of the Gorilla]|h|r'
+stats[suffix]=stats[gorilla]
+EQUIPPED='|cff1eff00|Hitem:4568:0:0:0:0:0:-19:456|h[Grunt Axe of Holy Wrath]|h|r'
+assert(render(suffix),'same-base suffix variant comparison missing')
+ns.Reports.Build=build
+EQUIPPED=oldEquipped
+api.GetInventoryItemLink=function(_,slot)return slot==18 and EQUIPPED or nil end
 api.C_Item.GetItemInfoInstant=function()return 5,nil,nil,'INVTYPE_HEAD',nil,4,1 end
 assert(not render(HOVER),'armor must not be compared')
 -- never during combat, never raising errors

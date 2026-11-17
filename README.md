@@ -1,6 +1,6 @@
 # Titan Approx DPS
 
-Current version `0.1.18` for World of Warcraft Forever, interface `16001`.
+Current version `0.1.19` for World of Warcraft Forever, interface `16001`.
 
 Analyzes completed native damage-meter sessions. No live DPS display or combat-log event registration. Optional Titan integration; the minimap launcher and results window work independently.
 

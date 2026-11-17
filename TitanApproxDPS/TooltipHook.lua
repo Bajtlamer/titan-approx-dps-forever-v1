@@ -10,7 +10,11 @@ local function signed(value,fmt)
  return (value>=0 and '+' or '-')..text
 end
 local function tone(value)return value>=0 and colors.good or colors.bad end
-local function itemID(link)return tonumber(tostring(link):match('item:(%d+)'))end
+local function itemVariant(link)
+ local value=link:match('item:([%d:%-]+)')
+ if not value or not tonumber(value:match('^(%d+)')) then return nil end
+ return ns.WeaponAttribution.Variant(value)
+end
 
 -- Returns the Compare result and the equipped group, or nil when nothing applies.
 function H.Evaluate(link,api,store)
@@ -23,13 +27,13 @@ function H.Evaluate(link,api,store)
  local slot=ns.Compare.SlotFor(equipLoc);if not slot then return nil end
  local equipped=api.GetInventoryItemLink and api.GetInventoryItemLink('player',slot)
  if type(equipped)~='string' then return nil end
- local hoveredID,equippedID=itemID(link),itemID(equipped)
- if not hoveredID or hoveredID==equippedID then return nil end
+ local hoveredVariant,equippedVariant=itemVariant(link),itemVariant(equipped)
+ if not hoveredVariant or not equippedVariant or hoveredVariant==equippedVariant then return nil end
  local newStats=ns.Compare.ItemStats(link,api);local oldStats=ns.Compare.ItemStats(equipped,api)
  local group
  if store and ns.Reports then
   for _,g in ipairs(ns.Reports.Build(store,'all',api).groups)do
-   if g.slot==slot and g.profile:find('^slot:'..slot..':'..equippedID..':') and (not group or g.damage>group.damage) then group=g end
+   if g.slot==slot and g.profile=='slot:'..slot..':'..equippedVariant and (not group or g.damage>group.damage) then group=g end
   end
  end
  local result=ns.Compare.Compare(newStats,oldStats,group)
