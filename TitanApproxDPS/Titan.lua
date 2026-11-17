@@ -170,7 +170,7 @@ function T.Menu(owner)
 end
 function T.Initialize()
  local ldb=LibStub and LibStub:GetLibrary('LibDataBroker-1.1',true);if not ldb then return end
- T.broker=ldb:NewDataObject('TitanApproxDPS',{type='data source',label='Approx DPS',text='Lifetime',icon='Interface\\Icons\\Ability_Warrior_Charge',
+ T.broker=ldb:NewDataObject('TitanApproxDPS',{type='data source',label='Approx DPS',text='Lifetime',icon='Interface\\AddOns\\TitanApproxDPS\\Artwork\\AddonIcon',
  OnEnter=T.Show,OnLeave=T.Hide,OnClick=function(owner,button)if button=='RightButton'then T.Menu(owner)else T.Hide();ns.Window.Toggle()end end})
  T.Refresh()
 end

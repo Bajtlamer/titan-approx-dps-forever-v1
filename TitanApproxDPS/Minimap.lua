@@ -10,7 +10,7 @@ function M.Initialize()
  if not s.minimapLayoutVersion or s.minimapLayoutVersion<1 then if s.angle==220 then s.angle=155 end;s.minimapLayoutVersion=1 end
  local b=CreateFrame('Button','TitanApproxDPSMinimapButton',UIParent);M.button=b;b:SetSize(32,32);b:SetFrameStrata('MEDIUM')
  local background=b:CreateTexture(nil,'BACKGROUND');background:SetTexture('Interface\\Minimap\\UI-Minimap-Background');background:SetSize(24,24);background:SetPoint('CENTER')
- local icon=b:CreateTexture(nil,'ARTWORK');M.icon=icon;icon:SetTexture('Interface\\Icons\\Ability_Warrior_Charge');icon:SetSize(20,20);icon:SetPoint('CENTER');icon:SetTexCoord(.08,.92,.08,.92)
+ local icon=b:CreateTexture(nil,'ARTWORK');M.icon=icon;icon:SetTexture('Interface\\AddOns\\TitanApproxDPS\\Artwork\\AddonIcon');icon:SetSize(20,20);icon:SetPoint('CENTER');icon:SetTexCoord(.08,.92,.08,.92)
  if b.CreateMaskTexture then local mask=b:CreateMaskTexture();if mask then mask:SetTexture('Interface\\CHARACTERFRAME\\TempPortraitAlphaMask');mask:SetAllPoints(icon);icon:AddMaskTexture(mask)end end
  local border=b:CreateTexture(nil,'OVERLAY');border:SetTexture('Interface\\Minimap\\MiniMap-TrackingBorder');border:SetSize(54,54);border:SetPoint('TOPLEFT')
  b:RegisterForClicks('LeftButtonUp','RightButtonUp');b:RegisterForDrag('LeftButton')

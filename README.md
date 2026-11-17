@@ -1,6 +1,6 @@
 # Titan Approx DPS
 
-Development candidate `0.1.17-alpha` for World of Warcraft Forever, interface `16001`.
+Current version `0.1.18` for World of Warcraft Forever, interface `16001`.
 
 Analyzes completed native damage-meter sessions. No live DPS display or combat-log event registration. Optional Titan integration; the minimap launcher and results window work independently.
 
@@ -86,3 +86,15 @@ This release adds SpellRules.lua to the manifest. Fully restart the WoW client a
 ## Item tooltip estimates (0.1.16-alpha)
 
 Hovering a weapon compares it with the equipped weapon of the same slot. With at least 20 fights that carry a build snapshot the tooltip shows an estimated change calibrated on your own data: auto-attack damage is modelled as an efficiency factor times (weapon DPS + attack power / 14), with the factor fitted from your fights, and spell damage as a straight-line fit of your spell group DPS on spell power. Below 20 fights it shows the rough comparison and says how many fights are missing. It is an estimate, not a measurement: abilities, procs and enchants are not modelled, and every line states the number of fights and a confidence level.
+
+## Original artwork
+
+The AddOns list uses the original addon emblem in Artwork/AddonIcon.tga. Logos and avatars for CurseForge are in artwork/v1. A full client restart is needed to discover the texture; live rendering remains to be confirmed.
+
+## Development folders and artwork
+
+Development folder: titan-approx-dps. Runtime addon folders are separate from artwork/. The versioned artwork/v1/ directory contains the original master PNG, logo-1024.png, avatar-400.png for CurseForge, icon-64.png and Icon.tga for each addon. artwork/index.json lists the available versions. Add future designs as a new version directory; keep previous artwork. Marketing PNGs and source masters are excluded from runtime ZIPs.
+
+## CurseForge project text
+
+Ready-to-copy summaries, descriptions and local artwork references are listed in [curseforge/ref-index.md](curseforge/ref-index.md).

@@ -1,0 +1,11 @@
+{
+  "tool": "built-in image_gen",
+  "edition": 1,
+  "assets": [
+    {
+      "id": "TitanApproxDPS",
+      "folder": "TitanApproxDPS",
+      "prompt": "Use case: logo-brand. Create ONE final square original fantasy game addon avatar for Titan Approx DPS. Subject: a powerful polished steel sword crossing a small antique gold hourglass, one restrained fiery orange swoosh indicating a strike, symbolizing combat damage measured over time. Consistent family design with the previously created Titan Gathered and Command History emblems: tactile hand-painted classic fantasy inventory artwork, dark midnight blue background, antique gold square bevel frame with restrained clipped corners inset 5 percent. Strong simple central silhouette fills 75 percent. Bold polished highlights, readable as a 64x64 game icon. Square 1024x1024. No letters, text, numerals, wordmarks, watermark, existing game or company logos. Single emblem, no collage."
+    }
+  ]
+}

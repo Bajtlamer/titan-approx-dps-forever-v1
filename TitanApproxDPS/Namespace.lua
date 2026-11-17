@@ -1,5 +1,5 @@
 local _,ns=...
-ns.version='0.1.17-alpha'
+ns.version='0.1.18'
 function ns.Copy(t)
  if type(t)~='table' then return t end
  local r={};for k,v in pairs(t)do r[k]=ns.Copy(v)end;return r

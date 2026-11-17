@@ -1,7 +1,8 @@
 ## Interface: 16001
 ## Title: Titan Approx DPS
 ## Notes: Post-fight weapon, spell and method observations for Forever.
-## Version: 0.1.17-alpha
+## Version: 0.1.18
+## IconTexture: Interface\AddOns\TitanApproxDPS\Artwork\AddonIcon
 ## OptionalDeps: Titan
 ## SavedVariables: TitanApproxDPSDB
 Namespace.lua

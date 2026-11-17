@@ -18,3 +18,7 @@ Target Forever 1.60.1, interface 16001. Runtime uses Lua 5.1 semantics. Preserve
 Runtime files live only in TitanApproxDPS/. Tools, tests and prefixed documents stay at root. Exclude dist/, private captures, SavedVariables and temporary data from Git. Do not copy third-party AddOn code without applicable rights.
 
 Documentation uses plan-, ref-, book-, Codex- and tmp- prefixes. Temporary tmp-* files are ignored and removed after use. No emoji, decorative glyphs or em dashes in text.
+
+## Current release stage
+
+On 2026-11-16 the user requested stable versions for all addons. Use plain numeric versions without alpha or beta suffixes from this update onward. Preserve historical release notes and test fixtures.

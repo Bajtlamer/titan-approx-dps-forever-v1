@@ -6,6 +6,7 @@ class Packaging(unittest.TestCase):
   subprocess.run([sys.executable,'tools/package.py'],cwd=ROOT,check=True,capture_output=True)
   with zipfile.ZipFile(ROOT/('dist/TitanApproxDPS-'+VERSION+'.zip')) as z:
    self.assertIn('TitanApproxDPS/Core.lua',z.namelist())
+   self.assertIn('TitanApproxDPS/Artwork/AddonIcon.tga',z.namelist())
    self.assertIn('TitanApproxDPS/SpellRules.lua',z.namelist())
    self.assertTrue(all(p.startswith('TitanApproxDPS/') and not p.endswith('.md') for p in z.namelist()))
   with tempfile.TemporaryDirectory() as t:
