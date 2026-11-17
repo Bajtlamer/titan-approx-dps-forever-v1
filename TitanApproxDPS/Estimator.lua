@@ -37,11 +37,9 @@ local function autoConfidence(summary)
  return 'medium'
 end
 
--- samples: fights of the equipped weapon's group: {dps,autoDps,seconds,build}.
-function E.AutoAttack(samples,kind,class,newStats,oldStats)
- local wNew=newStats and ns.Compare.WeaponDps(newStats)
- local wOld=oldStats and ns.Compare.WeaponDps(oldStats)
- if not (wNew and wOld and wOld>0) then return nil,'Item stats do not include weapon DPS for one of the items.' end
+-- Calibrates the efficiency factor k from fights of the equipped weapon: auto DPS divided by
+-- (weapon DPS + attack power / 14). Returns summary,groupTypical,usable or nil,reason.
+local function calibrate(samples,kind,wOld)
  local k=ns.Stats.New();local total,weight=0,0;local usable=0
  for _,s in ipairs(samples)do
   local b=s.build
@@ -57,9 +55,33 @@ function E.AutoAttack(samples,kind,class,newStats,oldStats)
  local summary=ns.Stats.Summary(k)
  local groupTypical=total/weight
  if not summary.typical or summary.typical<=0 or groupTypical<=0 then return nil,'No usable damage was recorded for this weapon.' end
- local delta=summary.typical*((wNew-wOld)+E.PowerDelta(newStats,oldStats,class,kind)/14)
+ return summary,groupTypical,usable
+end
+
+local function autoResult(summary,groupTypical,usable,delta)
  return {kind='auto',k=summary.typical,deltaDps=delta,groupTypical=groupTypical,percent=100*delta/groupTypical,
   fights=usable,confidence=autoConfidence(summary),spread=summary.spread}
+end
+
+-- samples: fights of the equipped weapon's group: {dps,autoDps,seconds,build}.
+function E.AutoAttack(samples,kind,class,newStats,oldStats)
+ local wNew=newStats and ns.Compare.WeaponDps(newStats)
+ local wOld=oldStats and ns.Compare.WeaponDps(oldStats)
+ if not (wNew and wOld and wOld>0) then return nil,'Item stats do not include weapon DPS for one of the items.' end
+ local summary,groupTypical,usable=calibrate(samples,kind,wOld)
+ if not summary then return nil,groupTypical end
+ local delta=summary.typical*((wNew-wOld)+E.PowerDelta(newStats,oldStats,class,kind)/14)
+ return autoResult(summary,groupTypical,usable,delta)
+end
+
+-- Attack power change from gear that is not a weapon: the equipped weapon stays, only
+-- deltaPower (attack power) changes. weaponStats are the equipped weapon's item stats.
+function E.AutoPower(samples,kind,weaponStats,deltaPower)
+ local wOld=weaponStats and ns.Compare.WeaponDps(weaponStats)
+ if not (wOld and wOld>0) then return nil,'Item stats do not include weapon DPS for the equipped weapon.' end
+ local summary,groupTypical,usable=calibrate(samples,kind,wOld)
+ if not summary then return nil,groupTypical end
+ return autoResult(summary,groupTypical,usable,summary.typical*deltaPower/14)
 end
 
 local function spellPower(stats)
@@ -100,5 +122,27 @@ function E.ForItem(c,group,newStats,oldStats)
   out.auto,out.autoReason=E.AutoAttack(ns.Stats.FightSamples(c,group.profile),group.kind,c.class,newStats,oldStats)
  end
  out.spell,out.spellReason=E.Spell(ns.Stats.FightSamples(c,'spell'),newStats,oldStats)
+ return out
+end
+
+-- Gear that is not a weapon. derived: ItemEffects.Derive result. weapons: {melee=,ranged=}
+-- each {group=report group,stats=item stats of the equipped weapon} or nil.
+function E.ForGear(c,derived,weapons,newStats,oldStats)
+ local out={autos={},autoReasons={}}
+ for _,kind in ipairs({'melee','ranged'})do
+  local delta=kind=='ranged' and derived.rangedAP or derived.meleeAP
+  if delta and delta~=0 then
+   local w=weapons and weapons[kind]
+   if w and w.group and w.group.kind==kind and w.stats then
+    local a,reason=E.AutoPower(ns.Stats.FightSamples(c,w.group.profile),kind,w.stats,delta)
+    if a then a.kind=kind;out.autos[#out.autos+1]=a else out.autoReasons[#out.autoReasons+1]=reason end
+   else
+    out.autoReasons[#out.autoReasons+1]='No fight data for the equipped '..kind..' weapon yet, so '..kind..' attack power cannot be turned into damage.'
+   end
+  end
+ end
+ if derived.spellPower and derived.spellPower~=0 then
+  out.spell,out.spellReason=E.Spell(ns.Stats.FightSamples(c,'spell'),newStats,oldStats)
+ end
  return out
 end

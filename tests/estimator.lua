@@ -1,5 +1,5 @@
 local ns={}
-for _,f in ipairs({'Namespace','Capabilities','Settings','Style','Storage','SpellRules','WeaponAttribution','Records','Categories','Stats','Reports','Json','BuildSnapshot','Transfer','Compare','Estimator','TooltipHook'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
+for _,f in ipairs({'Namespace','Capabilities','Settings','Style','Storage','SpellRules','WeaponAttribution','Records','Categories','Stats','Reports','Json','BuildSnapshot','Transfer','Compare','ItemEffects','Estimator','TooltipHook'})do assert(loadfile('TitanApproxDPS/'..f..'.lua'))('x',ns)end
 local E=ns.Estimator
 local function near(a,b,eps)return math.abs(a-b)<(eps or 1e-6)end
 local DPS='ITEM_MOD_DAMAGE_PER_SECOND_SHORT'
@@ -113,4 +113,18 @@ for i=1,10 do c.receipts['f'..i].build=nil end
 shown,text=render(HOVER)
 assert(text:find('Rough effect',1,true) and text:find('needs 20',1,true) or text:find('20 fights',1,true),'fallback explains the 20 fight minimum: '..text)
 assert(not text:find('Estimated change',1,true))
+-- gear that is not a weapon: only attack power changes, the equipped weapon stays
+r=assert(E.AutoPower(meleeSamples(30),'melee',old,14));assert(near(r.k,0.8) and near(r.deltaDps,0.8),'14 AP is one weapon DPS times k')
+assert(E.AutoPower(meleeSamples(30),'melee',old,0).deltaDps==0)
+none,why=E.AutoPower(meleeSamples(30),'melee',{},14);assert(none==nil and why:find('weapon DPS',1,true))
+none,why=E.AutoPower(meleeSamples(19),'melee',old,14);assert(none==nil and why:find('20',1,true))
+local realSamples=ns.Stats.FightSamples
+ns.Stats.FightSamples=function(_,key)return key=='spell' and spellSamples(30,0.5,2) or meleeSamples(30)end
+local gear=E.ForGear({},{meleeAP=14,spellPower=40},{melee={group={kind='melee',profile='p'},stats=old}},{ITEM_MOD_SPELL_POWER_SHORT=40},{})
+assert(#gear.autos==1 and gear.autos[1].kind=='melee' and near(gear.autos[1].deltaDps,0.8),'melee auto estimate')
+assert(gear.spell and near(gear.spell.deltaDps,20),'spell estimate from spell power: '..tostring(gear.spell and gear.spell.deltaDps))
+gear=E.ForGear({},{rangedAP=14},{melee={group={kind='melee',profile='p'},stats=old}},{},{})
+assert(#gear.autos==0 and #gear.autoReasons==1 and gear.spell==nil,'no ranged weapon data gives a reason, not a number')
+gear=E.ForGear({},{hp=50},{},{},{});assert(#gear.autos==0 and #gear.autoReasons==0 and gear.spell==nil,'health only: no damage estimate')
+ns.Stats.FightSamples=realSamples
 print('PASS estimator: calibrated auto-attack and spell estimates, guards, confidence, tooltip integration')
